@@ -1,0 +1,5 @@
+backend/test_config.py*
+.idea
+images/
+metadata/
+datasets.csv

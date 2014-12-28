@@ -271,14 +271,13 @@ $(function () {
 
     });
 
-    var slopeSlider = $('#slope').slider()
-        .on('change', filterSliderChanged)
-        .data('slider');
-
-
-    var interceptSlider = $('#intercept').slider()
-        .on('change', filterSliderChanged)
-        .data('slider');
+    //var slopeSlider = $('#slope').slider()
+    //    .on('change', filterSliderChanged)
+    //    .data('slider');
+    //
+    //var interceptSlider = $('#intercept').slider()
+    //    .on('change', filterSliderChanged)
+    //    .data('slider');
 
 
     function filterSliderChanged(){
@@ -294,10 +293,20 @@ $(function () {
             currentDataset = uuid;
             selected = {};
             images = imgs;
+            $('#tags').html('');
+
+            var maxPosition = _.max(_.map(imgs, function (im) {
+                return dataset[currentDataset].metaset ? im.meta_posidx : im.posidx;
+            }));
+            if(maxPosition > 0){
+                // FIXME: Does not work for metadataset.
+                $('#tags').append('<span class="label label-default">Positions</span>');
+            }
 
             var maxFrame = _.max(_.map(imgs, function (im) {
                 return im.frame;
             }));
+
             frameSlider.setValue(0);
             if (maxFrame > 0) {
                 // https://github.com/seiyria/bootstrap-slider
@@ -307,6 +316,7 @@ $(function () {
                     .data('slider');
                 $('#frameslider-wrap').show();
                 $('#time').show();
+                $('#tags').append('<span class="label label-primary">Time lapse</span>');
             } else {
                 $('#frameslider-wrap').hide();
                 $('#time').hide();
@@ -314,6 +324,7 @@ $(function () {
             var maxChannel = _.max(_.map(imgs, function (im) {
                 return im.chidx;
             }));
+
             channelSlider.setValue(0);
             if(maxChannel > 0){
                 channelSlider.destroy();
@@ -321,6 +332,8 @@ $(function () {
                     .on('change', channelSliderChanged)
                     .data('slider');
                 $('#channelslider-wrap').show();
+
+                $('#tags').append('<span class="label label-success">Channels</span>');
             }else{
                 $('#channelslider-wrap').hide();
             }
@@ -423,6 +436,7 @@ $(function () {
         d.y = +d.y;
         d.frame = +d.frame;
         d.posidx = +d.posidx;
+        d.meta_posidx = +d.meta_posidx;
         return d;
     }
 

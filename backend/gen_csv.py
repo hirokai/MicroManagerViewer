@@ -3,40 +3,11 @@ import os
 from joblib import Parallel, delayed
 import multiprocessing
 import logging
-
-gdrive = '/Volumes/Macintosh HD/Google Drive/Groves/Scope 7/'
-
-datasets = [
-	# gdrive + '20141219 T cells on pattern LAT-EGFP unsorted/02 FC2/cells_1',
-	# gdrive + '20141219 T cells on pattern LAT-EGFP unsorted/04 FC3/cells_ricm_1',
-	# gdrive + '20141219 T cells on pattern LAT-EGFP unsorted/05 FC4/cells_ricm_1',
-	{'name': '20141130 Immunostaining/03 FC1 TIRF',
-	 'folders': [gdrive + '20141130 Immunostaining/03 FC1/01 tirf and confocal/tirf_5ch_1'
-, gdrive + '20141130 Immunostaining/03 FC1/01 tirf and confocal/tirf_5ch_2'
-, gdrive + '20141130 Immunostaining/03 FC1/01 tirf and confocal/tirf_5ch_3'
-, gdrive + '20141130 Immunostaining/03 FC1/01 tirf and confocal/tirf_5ch_4'
-, gdrive + '20141130 Immunostaining/03 FC1/01 tirf and confocal/tirf_5ch_5']},
-	{'name': '20141130 Immunostaining/02 FC3 TIRF',
-	 'folders': [gdrive + '20141130 Immunostaining/02 FC3/tirf_1'
-		, gdrive + '20141130 Immunostaining/02 FC3/tirf_2'
-		, gdrive + '20141130 Immunostaining/02 FC3/tirf_5ch_1']},
-	{'name': '20141130 Immunostaining/01 FC4 TIRF',
-	 'folders': [gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_1'
-		, gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_2'
-		, gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_3'
-		, gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_4'
-		, gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_5'
-		, gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_6'
-		, gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_7'
-		, gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_8'
-		, gdrive + '20141130 Immunostaining/01 FC4/tirf_5ch_9']},
-	# gdrive + '20141225 T cells on new PLL-PEG pattern/03 FC3/02 cells_3/'
-	# , gdrive + '20141225 T cells on new PLL-PEG pattern/04 FC4/02 cells 561nm_4/'
-]
+from test_config import datasets
 
 logging.basicConfig(level=logging.WARNING)
 
-force_imgout = True
+force_imgout = False
 
 def is_number(s):
 	try:
@@ -58,7 +29,7 @@ def convert(imgpath,outpath,method='ImageMagick'):
 
 
 
-def readMetadataFolder(folder, pos_subfolder, metaset=False):
+def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
 	logging.debug('readMetadataFolder(): %s, %s' % (folder, pos_subfolder))
 	path = os.path.join(folder, pos_subfolder, 'metadata.txt')
 	if not os.path.exists(path):
@@ -84,7 +55,7 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False):
 			idx = objf['FrameIndex']
 			uuid = objf['UUID']
 			imgpath = os.path.join(folder, pos_subfolder, 'img_%09d_%s_000.tif' % (idx, ch))
-			outpath = '%s/%s.jpg' % (outfolder, uuid)
+			outpath = os.path.join(outfolder, '%s.jpg' % (uuid))
 			if force_imgout or not os.path.exists(outpath):
 				convert(imgpath,outpath,method='scipy')
 			row = (uuid
@@ -97,7 +68,7 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False):
 			       , objf['YPositionUm']
 			       , ch)
 			if metaset:
-				row = (folder,set_uuid) + row
+				row = (folder,set_uuid) + row + (metaset_idx,)
 			res.append(row)
 	return res, set_uuid
 
@@ -105,10 +76,10 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False):
 def updateDatasets():
 	import csv
 
-	csvpath = '../datasets.csv'
+	csvpath = os.path.join('..', 'datasets.csv')
 	with open(csvpath, 'wb') as f:
 		writer = csv.writer(f)
-		writer.writerow(['uuid', 'name', 'folder', 'metaset', 'images'])
+		writer.writerow(['uuid', 'name', 'folder', 'metaset', 'images', 'metasetdim'])
 		for d in sorted(datasets_processed,key=lambda a: a[1]):     # Sorted by name
 			writer.writerow(d)
 
@@ -120,7 +91,7 @@ def write_to_csv(poss, set_uuid, metaset=False):
 	import csv
 
 	csvpath = os.path.join('..', 'metadata', set_uuid + '.csv')
-	header = ['folder','set_uuid', 'uuid', 'frame', 'posidx', 'chidx', 'time', 'posname', 'x', 'y', 'chname'] if metaset else \
+	header = ['folder','set_uuid', 'uuid', 'frame', 'posidx', 'chidx', 'time', 'posname', 'x', 'y', 'chname', 'meta_posidx'] if metaset else \
 		['uuid', 'frame', 'posidx', 'chidx', 'time', 'posname', 'x', 'y', 'chname']
 	with open(csvpath, 'wb') as f:
 		writer = csv.writer(f)
@@ -153,13 +124,13 @@ def process_set(dataset):
 
 	print('\nProcessed: ' + set_uuid)
 
-
-def mk_name_of_metaset(ds):
-	import re
-
-	m = re.search('/(\d{6,8}.+?/.+?)/', ds[0])
-	name = m.group(1)
-	return name
+#
+# def mk_name_of_metaset(ds):
+# 	import re
+#
+# 	m = re.search('/(\d{6,8}.+?/.+?)/', ds[0])
+# 	name = m.group(1)
+# 	return name
 
 
 def process_metaset(ds):
@@ -168,8 +139,8 @@ def process_metaset(ds):
 
 	pos_all = []
 	set_uuid = []
-	for dataset in ds['folders']:
-		poss = Parallel(n_jobs=num_cores)(delayed(readMetadataFolder)(dataset, subfolder, metaset=True) for subfolder
+	for idx, dataset in enumerate(ds['folders']):
+		poss = Parallel(n_jobs=num_cores)(delayed(readMetadataFolder)(dataset, subfolder, metaset=True, metaset_idx=idx) for subfolder
 		                                  in os.listdir(dataset) if os.path.isdir(os.path.join(dataset, subfolder)))
 		pos_all += [x for x in poss if x is not None]
 		if len(pos_all) > 0:
@@ -186,7 +157,7 @@ def process_metaset(ds):
 	id = hashlib.sha256(','.join(sorted(set_uuid))).hexdigest()
 	write_to_csv(pos_flatten, 'metaset_%s' % (id), metaset=True)
 
-	datasets_processed.append(('metaset_' + id, ds['name'], id,1,len(pos_flatten)))
+	datasets_processed.append(('metaset_' + id, ds['name'], id,1,len(pos_flatten), ds.get('dimension')))
 
 	print('\nProcessed: ' + id)
 
