@@ -7,7 +7,7 @@ from test_config import datasets
 
 logging.basicConfig(level=logging.WARNING)
 
-force_imgout = False
+force_imgout = True
 imgcount = 0
 
 
@@ -19,16 +19,16 @@ def is_number(s):
 		return False
 
 
-def convert(imgpath,outpath,method='ImageMagick'):
+def convert(imgpath,outpath,method='scipy', size=0.25):
 	if method == 'ImageMagick':
 		import subprocess
-		subprocess.call(['convert', '-quiet', '-contrast-stretch', '0.15x0.02%', '-geometry', '256x256', imgpath, outpath])
+		subprocess.call(['convert', '-quiet', '-contrast-stretch', '0.15x0.02%', '-resize', '%d%%' % (size*100), imgpath, outpath])
 	elif method == 'scipy':
 		import tifffile
-		import scipy.misc
+		import scipy.misc,scipy.ndimage
 		img = tifffile.imread(imgpath)
-		scipy.misc.imsave(outpath, img)
-
+		img2 = scipy.ndimage.zoom(img,size)
+		scipy.misc.imsave(outpath, img2)
 
 
 def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
@@ -59,9 +59,13 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
 			idx = objf['FrameIndex']
 			uuid = objf['UUID']
 			imgpath = os.path.join(folder, pos_subfolder, 'img_%09d_%s_000.tif' % (idx, ch))
-			outpath = os.path.join(outfolder, '%s.jpg' % (uuid))
+			outpath = os.path.join(outfolder, '%s.png' % (uuid))
 			if force_imgout or not os.path.exists(outpath):
-				convert(imgpath,outpath,method='scipy')
+				convert(imgpath,outpath,method='scipy',size=0.5)
+				folderimgcount += 1
+			outpath2 = os.path.join(outfolder, '%s_s1.jpg' % (uuid))
+			if force_imgout or not os.path.exists(outpath2):
+				convert(imgpath,outpath2,method='scipy',size=0.125)
 				folderimgcount += 1
 			row = (uuid
 			       , idx

@@ -6,9 +6,9 @@ var mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.te
 var w = screen.width;
 var h = screen.height;
 
-var margin = {top: -5, right: -5, bottom: -5, left: -5},
-    width = (mobile ? w * 0.9 : 800) - margin.left - margin.right,
-    height = (mobile ? h * 0.5 : 600) - margin.top - margin.bottom;
+var margin = {top: -5, right: -5, bottom: -5, left: -5};
+var width;
+var height;
 
 var zoom;
 
@@ -16,14 +16,17 @@ var svg;
 
 function setupD3() {
 
+    width = (mobile ? w * 0.9 : 900) - margin.left - margin.right;
+    height = (mobile ? h * 0.5 : 600) - margin.top - margin.bottom;
+
     zoom = d3.behavior.zoom()
         .scaleExtent([0.2, 40])
         .on("zoom", zoomed);
 
 
     svg = d3.select("#map")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
+        .style("width", width + margin.left + margin.right)
+        .style("height", height + margin.top + margin.bottom)
         .append("g")
         .attr("transform", "translate(" + margin.left + "," + margin.right + ")")
         .call(zoom);
@@ -101,6 +104,38 @@ function setupD3() {
     function zoomed() {
 //        console.log(d3.event.translate,d3.event.scale);
         container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+        currentScale = d3.event.scale;
+        updateImageResolution(d3.event.scale);
+    }
+}
+
+var currentScale;
+var dataset = {};
+
+function imghref(base, res) {
+    var m = {s1: '_s1.jpg', full: '.png'};
+    return base + m[res];
+}
+
+function imgbasename(dn, d) {
+    var s = dataset[dn];
+    return 'images/' + (s.metaset ? d.set_uuid : s.uuid) + '/' + d.uuid;
+}
+
+function updateImageResolution(scale){
+//    console.log('updateImageResolution(): ', d3.event.scale);
+    if(scale > 20){
+        var count = 0;
+        $('svg image').each(function(i,el){
+            var base = $(el).attr('data-basename');
+            var res = $(el).attr('data-res');
+            if(res == 's1'){
+                $(el).attr('href',imghref(base,'full'));
+                count += 1;
+            }
+        });
+        if(count > 0)
+            console.log(''+count+' images set to high res.');
     }
 }
 
@@ -110,7 +145,6 @@ $(function () {
 
     var sel = d3.select('#data-select');
 
-    var dataset = {};
     var images = [];
     var currentDataset = null;
     dot = container.append("g")
@@ -142,6 +176,7 @@ $(function () {
 
 
     function selectImages(images) {
+        console.log('selectImages()',currentFilter,currentDim);
         return _.filter(images, function (img) {
             return (currentFilter.frame == null || img.frame == currentFilter.frame)
                 && (currentFilter.ch == null || img.chidx == currentFilter.ch)
@@ -178,11 +213,17 @@ $(function () {
     }
 
     function getSelectInfo(imgs){
+        var m = {pos: 'positions', frame: 'frames', ch: 'channels', slice: 'slices'};
+        var m2 = {pos: 'position', frame: 'frame', ch: 'channel', slice: 'slice'};
         var ds = _.map(remainingDim,function(d){
-            return {pos: 'positions', frame: 'frames', ch: 'channels', slice: 'slices'}[d];
+            return m[d];
         });
         var s = imgs.length > 1 ? (imgs.length+' images (multiple '+ds.join(', ')+')') : (imgs.length == 0 ? 'No image' : '1 image')
-        return 'Showing '+s+' of ' + JSON.stringify(currentFilter);
+        var s2 = _.compact(_.map(currentFilter,function(v,k){
+            console.log(k,v)
+            return v != null ? (m2[k] +'=' + v): null
+        })).join(', ');
+        return 'Showing '+s+' of ' + s2;
     }
 
     function channelSliderChanged() {
@@ -214,6 +255,7 @@ $(function () {
         remainingDim = _.difference(existingDim,filteringDim);
 
         if(_.contains(remainingDim,'pos')){
+            $('#pos-actual').attr('checked',!showOpt.ignorePos);
             $('#pos-actual-div').show();
         }else{
             $('#pos-actual-div').hide();
@@ -227,6 +269,7 @@ $(function () {
                 .on('change', positionSliderChanged)
                 .data('slider');
             currentFilter.pos = 0;
+            showOpt.ignorePos = true;
         }
 
         if (_.contains(sel, 'ch')) {
@@ -290,7 +333,7 @@ $(function () {
         });
         dot.exit().remove();
         var appended = dot.enter().append("g");
-        var col = Math.round(Math.sqrt(imgs.length)*1.2);
+        var col = Math.round(Math.sqrt(imgs.length)*1.25);
         var x = function (d, i) {
             var xi = i % col;
             var r = opt.ignorePos ? (size * 1.1 * xi) : (-d.x / 10);
@@ -307,9 +350,13 @@ $(function () {
             .attr("x", x)
             .attr("y", y)
             .attr('xlink:href', function (d) {
-                return imghref(currentDataset, d);
+                return imghref(imgbasename(currentDataset, d), 's1');
+            })
+            .attr('data-basename', function (d) {
+                return imgbasename(currentDataset, d, 's1');
             })
             .attr({
+                'data-res': 's1',
                 width: size, height: size, alt: function (d) {
                     return d.name;
                 }
@@ -353,17 +400,18 @@ $(function () {
                         xs.push(parseFloat($(this).attr('x')));
                         ys.push(parseFloat($(this).attr('y')));
                     });
-                    var scale = Math.min(width / (_.max(xs) - _.min(xs) + size * 1.1), height / (_.max(ys) - _.min(ys) + size * 1.1)) * 0.9;
-                    var tr_x = 20 - scale * _.min(xs);
-                    var tr_y = 20 - scale * _.min(ys);
+                    var targetscale = Math.min(width / (_.max(xs) - _.min(xs) + size * 1.1), height / (_.max(ys) - _.min(ys) + size * 1.1)) * 0.9;
+                    var tr_x = 20 - targetscale * _.min(xs);
+                    var tr_y = 20 - targetscale * _.min(ys);
                     //              console.log(tr_x, tr_y);
 
                     zoom.translate([tr_x, tr_y]);
-                    zoom.scale(scale);
+                    zoom.scale(targetscale);
                     zoom.event(svg.transition().duration(500));
                 }
             });
         }
+        updateImageResolution(currentScale);
 
         //$('image').on('load', function(){
         //    console.log($(this).parent('g').find('rect').css('fill','none'));
@@ -401,7 +449,6 @@ $(function () {
             $('#frameslider-wrap').show();
             $('#time').show();
             $('#tags').append('<span class="label label-primary">Time lapse</span>');
-            selectDim('frame');
         } else {
             $('#frameslider-wrap').hide();
             $('#time').hide();
@@ -439,6 +486,7 @@ $(function () {
             currentDim.ch = 1 + _.max(_.map(imgs, function (im) {
                 return im.chidx;
             }));
+            currentDim.slice = 1;//stub
 
             if(currentDim.pos > 1)
                 existingDim.push('pos');
@@ -447,12 +495,16 @@ $(function () {
             if(currentDim.ch > 1)
                 existingDim.push('ch');
 
+            var biggestDim = _.sortBy(Object.keys(currentDim),function(k){return 0-currentDim[k]})[0];
+            currentFilter[biggestDim] = 0;
+
             updateToolbar();
             console.log(currentDim);
 
-            imgs = _.filter(imgs, function (img) {
-                return img.frame == 0 && img.chidx == 0;
-            });
+//            selectDim([biggestDim]);
+            console.log(biggestDim);
+            $('#dim-'+biggestDim).click();
+            imgs = selectImages(images);
 
             updateImages(imgs, showOpt);
             updateInfo();
@@ -464,7 +516,7 @@ $(function () {
                 el.hide();
                 _.map(images, function (im) {
                     var imel = $('<img/>');
-                    imel.attr('src', imghref(currentDataset, im));
+                    imel.attr('src', imghref(imgbasename(currentDataset, im),'s1'));
                     el.append(imel);
                 });
             }
@@ -493,10 +545,6 @@ $(function () {
         return s.substr(s.length - size);
     }
 
-    function imghref(dn, d) {
-        var s = dataset[dn];
-        return 'images/' + (s.metaset ? d.set_uuid : s.uuid) + '/' + d.uuid + '.jpg';
-    }
 
     function path(dn, d) {
         var s = dataset[dn];
