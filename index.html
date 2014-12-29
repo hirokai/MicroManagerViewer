@@ -41,6 +41,10 @@
         background: pink;
     }
 
+    #channelSlider .slider-handle {
+        background: #ffa11e;
+    }
+
     select {
         font-size: 30px;
         height: 40px ! important;
@@ -55,13 +59,12 @@
         display: none;
     }
 
-
-    #tools > div {
-        float: left;
-    }
-
     #data-select {
         margin: 20px 0px;
+    }
+
+    .btn:focus,.btn:active {
+        outline: none !important;
     }
 
 </style>
@@ -78,6 +81,20 @@
 
             </div>
             <div style="clear:both;"></div>
+            <div>
+                <span>Select by</span>
+                <div class="btn-group" role="group" aria-label="...">
+                    <button type="button" class="btn btn-default dim-select" data-value="frame,pos" id="dim-posframe">Pos x Frame</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="frame,ch" id="dim-framech">Frame x Ch</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="pos,ch" id="dim-posch">Pos x Ch</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="frame" id="dim-frame">Frame</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="ch" id="dim-ch">Channel</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="pos" id="dim-pos">Position</button>
+                </div>
+            </div>
+            <div id="positionslider-wrap">
+                <span style="margin-right: 30px">Position</span><input id="position" data-slider-id='positionSlider' type="text" data-slider-min="0" data-slider-max="0" data-slider-step="1" data-slider-value="0"/>
+            </div>
             <div id="frameslider-wrap">
                 <span style="margin-right: 30px">Frame</span><input id="frame" data-slider-id='frameSlider' type="text" data-slider-min="0" data-slider-max="0" data-slider-step="1" data-slider-value="0"/>
                 <button class="btn btn-default" id="play"><span class="glyphicon glyphicon-play" aria-hidden="true"></span></button>
@@ -87,6 +104,9 @@
                 <span style="margin-right: 30px">Channel</span><input id="channel" data-slider-id='channelSlider' type="text" data-slider-min="0" data-slider-max="0" data-slider-step="1" data-slider-value="0"/>
             </div>
             <div>
+                <pre id="selectinfo"></pre>
+            </div>
+            <div id="pos-actual-div">
                 <input id="pos-actual" type="checkbox" value=""/><label for="pos-actual">Map in actual coordinates</label>
             </div>
         </div>

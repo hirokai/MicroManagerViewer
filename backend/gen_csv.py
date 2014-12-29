@@ -8,6 +8,8 @@ from test_config import datasets
 logging.basicConfig(level=logging.WARNING)
 
 force_imgout = False
+imgcount = 0
+
 
 def is_number(s):
 	try:
@@ -30,6 +32,8 @@ def convert(imgpath,outpath,method='ImageMagick'):
 
 
 def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
+	folderimgcount = 0
+
 	logging.debug('readMetadataFolder(): %s, %s' % (folder, pos_subfolder))
 	path = os.path.join(folder, pos_subfolder, 'metadata.txt')
 	if not os.path.exists(path):
@@ -58,6 +62,7 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
 			outpath = os.path.join(outfolder, '%s.jpg' % (uuid))
 			if force_imgout or not os.path.exists(outpath):
 				convert(imgpath,outpath,method='scipy')
+				folderimgcount += 1
 			row = (uuid
 			       , idx
 			       , objf['PositionIndex']
@@ -70,7 +75,7 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
 			if metaset:
 				row = (folder,set_uuid) + row + (metaset_idx,)
 			res.append(row)
-	return res, set_uuid
+	return res, set_uuid, imgcount
 
 
 def updateDatasets():
@@ -108,6 +113,9 @@ def process_set(dataset):
 	poss = [x for x in poss if x is not None]
 	set_uuid = poss[0][1]
 
+	global imgcount
+	imgcount += sum(map(lambda a: a[2], poss))
+
 	# Sort by time or position
 	sort_by_time = True
 	key = 4 if sort_by_time else 2
@@ -143,6 +151,8 @@ def process_metaset(ds):
 		poss = Parallel(n_jobs=num_cores)(delayed(readMetadataFolder)(dataset, subfolder, metaset=True, metaset_idx=idx) for subfolder
 		                                  in os.listdir(dataset) if os.path.isdir(os.path.join(dataset, subfolder)))
 		pos_all += [x for x in poss if x is not None]
+		global imgcount
+		imgcount += sum(map(lambda a: a[2], pos_all))
 		if len(pos_all) > 0:
 			set_uuid.append(pos_all[0][1])
 
@@ -172,6 +182,6 @@ def main():
 			process_set(d)
 	updateDatasets()
 	final = time.time()
-	print('Done. %d images processed. %.1f sec total.' % (sum([d[4] for d in datasets_processed]),final-initial))
+	print('Done. %d images processed (%d images converted). %.1f sec total.' % (sum([d[4] for d in datasets_processed]),imgcount,final-initial))
 
 main()
