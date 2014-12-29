@@ -6,6 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <style>
 
+    body {
+        margin: 20px;
+    }
+
     svg {
         background: #000;
     }
@@ -79,11 +83,15 @@
         width: 900px;
     }
 
+    #data-menu {
+        font-size: 12px;
+    }
 </style>
 <body class="container-fluid">
 
 <div class="row">
     <div class="col-md-3">
+        <p>Choose dataset</p>
         <ul id='data-menu' class="nav nav-pills nav-stacked">
         </ul>
     </div>
@@ -96,25 +104,17 @@
             <div>
                 <span>Select by</span>
                 <div class="btn-group" role="group" aria-label="...">
-                    <button type="button" class="btn btn-default dim-select" data-value="frame,pos" id="dim-posframe">Pos x Frame</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="frame,ch" id="dim-framech">Frame x Ch</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="pos,ch" id="dim-posch">Pos x Ch</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="pos" id="dim-pos">Position</button>
                     <button type="button" class="btn btn-default dim-select" data-value="frame" id="dim-frame">Frame</button>
                     <button type="button" class="btn btn-default dim-select" data-value="ch" id="dim-ch">Channel</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="pos" id="dim-pos">Position</button>
                     <button type="button" class="btn btn-default dim-select" data-value="slice" id="dim-slice">Slice</button>
                 </div>
-            </div>
-            <div>
-                <span>Preset</span>
+                <span style="margin-left: 30px">Preset</span>
                 <div class="btn-group" role="group" aria-label="...">
-                    <button type="button" class="btn btn-default dim-select" data-value="frame,pos" id="dim-posframe">Pos x Frame</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="frame,ch" id="dim-framech">Frame x Ch</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="pos,ch" id="dim-posch">Pos x Ch</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="frame" id="dim-frame">Frame</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="ch" id="dim-ch">Channel</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="pos" id="dim-pos">Position</button>
-                    <button type="button" class="btn btn-default dim-select" data-value="slice" id="dim-slice">Slice</button>
+                    <button type="button" class="btn btn-sm btn-default dim-preset" data-value="frame,pos" id="dim-posframe">Pos x Frame</button>
+                    <button type="button" class="btn btn-sm btn-default dim-preset" data-value="frame,ch" id="dim-framech">Frame x Ch</button>
+                    <button type="button" class="btn btn-sm btn-default dim-preset" data-value="pos,ch" id="dim-posch">Pos x Ch</button>
+                    <button type="button" class="btn btn-sm btn-default dim-preset" data-value="pos,slice" id="dim-posslice">Pos x Slice</button>
                 </div>
             </div>
             <div id="positionslider-wrap">

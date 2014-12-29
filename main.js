@@ -153,16 +153,25 @@ $(function () {
 
     d3.csv('datasets.csv', function (d) {
         d.metaset = (+d.metaset != 0);
+        d.positions = +d.positions;
+        d.frames = +d.frames;
+        d.channels = +d.channels;
+        d.slices = +d.slices;
+        d.meta_pos = +d.meta_pos;
+        d.meta_frame = +d.met_frame;
+        d.meta_ch = +d.meta_ch;
+        d.meta_slice = +d.meta_slice;
         return d;
     }, function (err, dat) {
         dataset = {};
+        console.log(dat);
         _.map(dat, function (d) {
             dataset[d.uuid] = d;
             var m = $('#data-menu');
             var dims = ['positions','frames','channels','slices'];
             var m2 = {positions: 'P', frames: 'T', channels: 'C', slices: 'Z'};
             var s2 = _.compact(_.map(dims,function(a){return d[a] > 1 ? (m2[a] + d[a]) : null;})).join(' x ');
-            var str = d.name + ' (' + d.images + ' images: '+s2+')';
+            var str = d.name + ' <p>(' + d.images + ' images: '+s2+')</p>';
             m.append('<li role="presentation" data-uuid="' + d.uuid + '" class="dmenu"><a href="#">' + str + '</a></li>');
             //
             //sel.append('option')
@@ -174,7 +183,7 @@ $(function () {
             $(ev.target).parents('ul').children('li').removeClass('active');
             var li = $(ev.target).parent('li');
             li.addClass('active');
-            datasetChanged(li.attr('data-uuid'));
+            datasetChanged(dataset[li.attr('data-uuid')]);
         });
     });
 
@@ -256,7 +265,7 @@ $(function () {
     var currentFilter = {pos: null, frame: null, ch: null, slice: null};
 
     var primaryDim;
-    var filteringDim;
+    var filteringDim = [];
     var existingDim;
     var remainingDim;
 
@@ -264,8 +273,9 @@ $(function () {
         if (!(sel instanceof Array)) {
             sel = [sel];
         }
-        console.log(currentDim);
+        console.log(filteringDim);
         filteringDim = sel;
+        console.log(filteringDim);
 
         remainingDim = _.difference(existingDim,filteringDim);
 
@@ -276,6 +286,7 @@ $(function () {
             $('#pos-actual-div').hide();
         }
 
+        console.log(currentDim);
         if (_.contains(sel, 'pos')) {
             // https://github.com/seiyria/bootstrap-slider
             positionSlider.destroy();
@@ -311,7 +322,7 @@ $(function () {
             sliceSlider = $('#slice').slider({min: 0, max: currentDim.slice - 1, value: 0})
                 .on('change', sliceSliderChanged)
                 .data('slider');
-            currentFilter.ch = 0;
+            currentFilter.slice = 0;
         }
 
         _.map(['frame', 'pos', 'ch','slice'], function (n) {
@@ -331,19 +342,26 @@ $(function () {
         updateImages(imgs,showOpt);
     }
 
-    $('.dim-select').click(function (ev) {
-        $('.dim-select').removeClass('active');
+    $('.dim-preset').click(function (ev) {
         var el = $(ev.target);
-        el.addClass('active');
         selectDim(el.attr('data-value').split(','));
     });
 
+    $('.dim-select').click(function (ev) {
+        var el = $(ev.target);
+        el.toggleClass('active');
+        if(el.hasClass('active')){
+            selectDim(filteringDim.concat([el.attr('data-value')]));
+        }else{
+            selectDim(_.difference(filteringDim, [el.attr('data-value')]));
+        }
+    });
 
     var maxImages = 500;
 
     function updateImages(imgs, opt, keepZoom) {
         if (imgs.length > maxImages) {
-            window.alert('Too many (>'+maxImages+') images. Filter by other conditions.');
+//            window.alert('Too many (>'+maxImages+') images. Filter by other conditions.');
             return;
         }
 
@@ -445,13 +463,18 @@ $(function () {
     });
 
     function updateToolbar() {
-        $('#dim-pos').attr('disabled', currentDim.pos <= 1);
-        $('#dim-frame').attr('disabled', currentDim.frame <= 1);
-        $('#dim-ch').attr('disabled', currentDim.ch <= 1);
-
-        $('#dim-posframe').attr('disabled', !(currentDim.pos > 1 && currentDim.frame > 1));
-        $('#dim-posch').attr('disabled', !(currentDim.pos > 1 && currentDim.ch > 1));
-        $('#dim-framech').attr('disabled', !(currentDim.ch > 1 && currentDim.frame > 1));
+        $('.dim-select,.dim-preset').each(function(){
+            var el = $(this);
+            var ds = el.attr('data-value').split(',');
+            var flag = false;
+            for(i in ds){
+                if(currentDim[ds[i]] <= 1){
+                    flag = true;
+                    break;
+                }
+            }
+            el.attr('disabled',flag);
+        });
 
         if (currentDim.pos > 1) {
             positionSlider.destroy();
@@ -497,30 +520,25 @@ $(function () {
         }
     }
 
-    function datasetChanged(uuid) {
+    function datasetChanged(s) {
 
-        d3.csv("metadata/" + uuid + ".csv", imgcsv_read, function (error, imgs) {
-            currentDataset = uuid;
+        d3.csv("metadata/" + s.uuid + ".csv", imgcsv_read, function (error, imgs) {
+            currentDataset = s.uuid;
             selected = {};
             images = imgs;
             $('#tags').html('');
+            selectDim(['frame']);
 
             currentFilter = {pos: null, frame: null, ch: null, slice: null};
 
             existingDim = [];
 
-            currentDim.pos = 1 + _.max(_.map(imgs, function (im) {
-                return im.meta_pos || im.pos || 0;
-            }));
-            currentDim.frame = 1 + _.max(_.map(imgs, function (im) {
-                return im.frame || 0;
-            }));
-            currentDim.ch = 1 + _.max(_.map(imgs, function (im) {
-                return im.ch || 0;
-            }));
-            currentDim.slice = 1 + _.max(_.map(imgs, function (im) {
-                return im.slice || 0;
-            }));
+            console.log(s, currentDim);
+
+            currentDim.pos = s.meta_pos || s.positions;
+            currentDim.frame = s.meta_frame || s.frames;
+            currentDim.ch = s.meta_ch || s.channels;
+            currentDim.slice = s.meta_slice || s.slices;
 
             if(currentDim.pos > 1)
                 existingDim.push('pos');
@@ -533,6 +551,9 @@ $(function () {
 
             var biggestDim = _.sortBy(Object.keys(currentDim),function(k){return 0-currentDim[k]})[0];
             currentFilter[biggestDim] = 0;
+            console.log(biggestDim);
+            selectDim([biggestDim]);
+
 
             updateToolbar();
             console.log(currentDim);
@@ -649,6 +670,7 @@ $(function () {
         d.meta_frame = +d.meta_frame;
         d.meta_ch = +d.meta_ch;
         d.meta_slice = +d.meta_slice;
+        //console.log(d);
         return d;
     }
 
