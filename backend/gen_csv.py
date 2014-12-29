@@ -7,7 +7,7 @@ from test_config import datasets
 
 logging.basicConfig(level=logging.WARNING)
 
-force_imgout = True
+force_imgout = False
 imgcount = 0
 
 
@@ -31,7 +31,7 @@ def convert(imgpath,outpath,method='scipy', size=0.25):
 		scipy.misc.imsave(outpath, img2)
 
 
-def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
+def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,metaset_dim='pos'):
 	folderimgcount = 0
 
 	logging.debug('readMetadataFolder(): %s, %s' % (folder, pos_subfolder))
@@ -54,11 +54,12 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
 		for fr in fr_keys:
 			if fr == 'Summary':
 				continue
-			ch = obj[fr]['Channel']
+			chname = obj[fr]['Channel']
 			objf = obj[fr]
-			idx = objf['FrameIndex']
+			frame = objf['FrameIndex']
+			slice = objf['SliceIndex']
 			uuid = objf['UUID']
-			imgpath = os.path.join(folder, pos_subfolder, 'img_%09d_%s_000.tif' % (idx, ch))
+			imgpath = os.path.join(folder, pos_subfolder, 'img_%09d_%s_%03d.tif' % (frame, chname, slice))
 			outpath = os.path.join(outfolder, '%s.png' % (uuid))
 			if force_imgout or not os.path.exists(outpath):
 				convert(imgpath,outpath,method='scipy',size=0.5)
@@ -67,17 +68,27 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None):
 			if force_imgout or not os.path.exists(outpath2):
 				convert(imgpath,outpath2,method='scipy',size=0.125)
 				folderimgcount += 1
-			row = (uuid
-			       , idx
+			row = (folder, set_uuid, uuid
 			       , objf['PositionIndex']
+			       , frame
 			       , objf['ChannelIndex']
+			       , objf['SliceIndex']
 			       , objf['ElapsedTime-ms']
 			       , objf['PositionName']
 			       , objf['XPositionUm']
 			       , objf['YPositionUm']
-			       , ch)
+			       , ""
+			       , chname,
+					"")
 			if metaset:
-				row = (folder,set_uuid) + row + (metaset_idx,)
+				if metaset_dim == 'pos':
+					row = row + (metaset_idx,0,0,0)
+				elif metaset_dim == 'frame':
+					row = row + (0,metaset_idx,0,0)
+				elif metaset_dim == 'ch':
+					row = row + (0,0,metaset_idx,0)
+				elif metaset_dim == 'slice':
+					row = row + (0,0,0,metaset_idx)
 			res.append(row)
 	return res, set_uuid, imgcount
 
@@ -88,7 +99,7 @@ def updateDatasets():
 	csvpath = os.path.join('..', 'datasets.csv')
 	with open(csvpath, 'wb') as f:
 		writer = csv.writer(f)
-		writer.writerow(['uuid', 'name', 'folder', 'metaset', 'images', 'metasetdim'])
+		writer.writerow(['uuid', 'name', 'folder', 'metaset', 'images', 'positions','frames','channels','slices', 'metasetdim'])
 		for d in sorted(datasets_processed,key=lambda a: a[1]):     # Sorted by name
 			writer.writerow(d)
 
@@ -100,8 +111,8 @@ def write_to_csv(poss, set_uuid, metaset=False):
 	import csv
 
 	csvpath = os.path.join('..', 'metadata', set_uuid + '.csv')
-	header = ['folder','set_uuid', 'uuid', 'frame', 'posidx', 'chidx', 'time', 'posname', 'x', 'y', 'chname', 'meta_posidx'] if metaset else \
-		['uuid', 'frame', 'posidx', 'chidx', 'time', 'posname', 'x', 'y', 'chname']
+	header = ['folder','set_uuid', 'uuid', 'pos', 'frame', 'ch', 'slice', 'time', 'posname', 'x', 'y', 'framename', 'chname', 'slicename'] +\
+	         (['meta_pos','meta_frame','meta_ch','meta_slice'] if metaset else [])
 	with open(csvpath, 'wb') as f:
 		writer = csv.writer(f)
 		writer.writerow(header)
@@ -122,27 +133,24 @@ def process_set(dataset):
 
 	# Sort by time or position
 	sort_by_time = True
-	key = 4 if sort_by_time else 2
+	key = 7 if sort_by_time else 3
 	pos_flatten = sorted(reduce(lambda c, d: c + d, map(lambda b: b[0], filter(lambda a: a is not None, poss))),
 	                     key=lambda e: e[key])
 
 	write_to_csv(pos_flatten, set_uuid)
 
+	num_pos = 1 + max(map(lambda a: a[3], pos_flatten))
+	num_fr = 1 + max(map(lambda a: a[4], pos_flatten))
+	num_ch = 1 + max(map(lambda a: a[5], pos_flatten))
+	num_sl = 1 + max(map(lambda a: a[6], pos_flatten))
+
 	import re
 
 	m = re.search('/(\d{6,8}.+?/.+?)/', dataset)
 	name = m.group(1)
-	datasets_processed.append((set_uuid, name, dataset, 0, len(pos_flatten)))
+	datasets_processed.append((set_uuid, name, dataset, 0, len(pos_flatten), num_pos, num_fr, num_ch, num_sl))
 
 	print('\nProcessed: ' + set_uuid)
-
-#
-# def mk_name_of_metaset(ds):
-# 	import re
-#
-# 	m = re.search('/(\d{6,8}.+?/.+?)/', ds[0])
-# 	name = m.group(1)
-# 	return name
 
 
 def process_metaset(ds):
@@ -152,7 +160,7 @@ def process_metaset(ds):
 	pos_all = []
 	set_uuid = []
 	for idx, dataset in enumerate(ds['folders']):
-		poss = Parallel(n_jobs=num_cores)(delayed(readMetadataFolder)(dataset, subfolder, metaset=True, metaset_idx=idx) for subfolder
+		poss = Parallel(n_jobs=num_cores)(delayed(readMetadataFolder)(dataset, subfolder, metaset=True, metaset_idx=idx,metaset_dim=ds['dimension']) for subfolder
 		                                  in os.listdir(dataset) if os.path.isdir(os.path.join(dataset, subfolder)))
 		pos_all += [x for x in poss if x is not None]
 		global imgcount
@@ -162,16 +170,22 @@ def process_metaset(ds):
 
 	# Sort by time or position
 	sort_by_time = True
-	key = 6 if sort_by_time else 4
+	key = 7 if sort_by_time else 3
 	pos_flatten = sorted(reduce(lambda c, d: c + d, map(lambda b: b[0], filter(lambda a: a is not None, pos_all))),
 	                     key=lambda e: e[key])
+
+
+	num_pos = (1 + max(map(lambda a: a[14], pos_flatten))) if ds['dimension'] == 'pos' else  (1 + max(map(lambda a: a[3], pos_flatten)))
+	num_fr = (1 + max(map(lambda a: a[15], pos_flatten))) if ds['dimension'] == 'frame' else  (1 + max(map(lambda a: a[4], pos_flatten)))
+	num_ch = (1 + max(map(lambda a: a[16], pos_flatten))) if ds['dimension'] == 'ch' else  (1 + max(map(lambda a: a[5], pos_flatten)))
+	num_sl = (1 + max(map(lambda a: a[17], pos_flatten))) if ds['dimension'] == 'slice' else  (1 + max(map(lambda a: a[6], pos_flatten)))
 
 	import hashlib
 
 	id = hashlib.sha256(','.join(sorted(set_uuid))).hexdigest()
 	write_to_csv(pos_flatten, 'metaset_%s' % (id), metaset=True)
 
-	datasets_processed.append(('metaset_' + id, ds['name'], id,1,len(pos_flatten), ds.get('dimension')))
+	datasets_processed.append(('metaset_' + id, ds['name'], id,1,len(pos_flatten), num_pos, num_fr, num_ch, num_sl, ds.get('dimension')))
 
 	print('\nProcessed: ' + id)
 

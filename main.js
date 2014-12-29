@@ -134,8 +134,9 @@ function updateImageResolution(scale){
                 count += 1;
             }
         });
-        if(count > 0)
-            console.log(''+count+' images set to high res.');
+        //if(count > 0){
+        //    console.log(''+count+' images set to high res.');
+        //}
     }
 }
 
@@ -158,7 +159,10 @@ $(function () {
         _.map(dat, function (d) {
             dataset[d.uuid] = d;
             var m = $('#data-menu');
-            var str = d.name + '(' + d.images + ' images)';
+            var dims = ['positions','frames','channels','slices'];
+            var m2 = {positions: 'P', frames: 'T', channels: 'C', slices: 'Z'};
+            var s2 = _.compact(_.map(dims,function(a){return d[a] > 1 ? (m2[a] + d[a]) : null;})).join(' x ');
+            var str = d.name + ' (' + d.images + ' images: '+s2+')';
             m.append('<li role="presentation" data-uuid="' + d.uuid + '" class="dmenu"><a href="#">' + str + '</a></li>');
             //
             //sel.append('option')
@@ -178,9 +182,10 @@ $(function () {
     function selectImages(images) {
         console.log('selectImages()',currentFilter,currentDim);
         return _.filter(images, function (img) {
-            return (currentFilter.frame == null || img.frame == currentFilter.frame)
-                && (currentFilter.ch == null || img.chidx == currentFilter.ch)
-                && (currentFilter.pos == null || (img.meta_posidx || img.posidx) == currentFilter.pos);
+            return (currentFilter.pos == null || (img.meta_pos || img.pos) == currentFilter.pos)
+                && (currentFilter.ch == null || (img.meta_ch || img.ch) == currentFilter.ch)
+                && (currentFilter.frame == null || (img.meta_frame || img.frame) == currentFilter.frame)
+                && (currentFilter.slice == null || (img.meta_slice || img.slice) == currentFilter.slice);
         });
     }
 
@@ -235,6 +240,16 @@ $(function () {
         $('#selectinfo').html(getSelectInfo(imgs));
     }
 
+    function sliceSliderChanged() {
+        currentFilter.slice = sliceSlider.getValue();
+        var imgs = selectImages(images);
+        selected = {};
+        updateImages(imgs, showOpt, true);
+        updateInfo();
+        $('#selectinfo').html(getSelectInfo(imgs));
+    }
+
+
     var showOpt = {ignorePos: true, preloadCache: true};
 
     var currentDim = {pos: null, frame: null, ch: null, slice: null};
@@ -262,7 +277,6 @@ $(function () {
         }
 
         if (_.contains(sel, 'pos')) {
-            primaryDim = 'pos';
             // https://github.com/seiyria/bootstrap-slider
             positionSlider.destroy();
             positionSlider = $('#position').slider({min: 0, max: currentDim.pos - 1, value: 0})
@@ -272,18 +286,8 @@ $(function () {
             showOpt.ignorePos = true;
         }
 
-        if (_.contains(sel, 'ch')) {
-            primaryDim = 'ch';
-            // https://github.com/seiyria/bootstrap-slider
-            channelSlider.destroy();
-            channelSlider = $('#channel').slider({min: 0, max: currentDim.ch - 1, value: 0})
-                .on('change', channelSliderChanged)
-                .data('slider');
-            currentFilter.ch = 0;
-        }
 
         if (_.contains(sel, 'frame')) {
-            primaryDim = 'frame';
             // https://github.com/seiyria/bootstrap-slider
             frameSlider.destroy();
             frameSlider = $('#frame').slider({min: 0, max: currentDim.frame - 1, value: 0})
@@ -292,8 +296,26 @@ $(function () {
             currentFilter.frame = 0;
         }
 
-        _.map(['frame', 'pos', 'ch'], function (n) {
-            var m = {frame: 'frame', pos: 'position', ch: 'channel'};
+        if (_.contains(sel, 'ch')) {
+            // https://github.com/seiyria/bootstrap-slider
+            channelSlider.destroy();
+            channelSlider = $('#channel').slider({min: 0, max: currentDim.ch - 1, value: 0})
+                .on('change', channelSliderChanged)
+                .data('slider');
+            currentFilter.ch = 0;
+        }
+
+        if (_.contains(sel, 'slice')) {
+            // https://github.com/seiyria/bootstrap-slider
+            sliceSlider.destroy();
+            sliceSlider = $('#slice').slider({min: 0, max: currentDim.slice - 1, value: 0})
+                .on('change', sliceSliderChanged)
+                .data('slider');
+            currentFilter.ch = 0;
+        }
+
+        _.map(['frame', 'pos', 'ch','slice'], function (n) {
+            var m = {frame: 'frame', pos: 'position', ch: 'channel', slice: 'slice'};
             if (_.contains(sel, n)) {
                 $('#' + m[n] + 'slider-wrap').show();
             } else {
@@ -317,13 +339,13 @@ $(function () {
     });
 
 
-    var maxImages = 200;
+    var maxImages = 500;
 
     function updateImages(imgs, opt, keepZoom) {
-        //if (imgs.length > maxImages) {
-        //    window.alert('Too many images. Filter by conditions.')
-        //    return;
-        //}
+        if (imgs.length > maxImages) {
+            window.alert('Too many (>'+maxImages+') images. Filter by other conditions.');
+            return;
+        }
 
         //      console.log(imgs,opt);
         var opt = opt || {};
@@ -459,9 +481,19 @@ $(function () {
                 .on('change', channelSliderChanged)
                 .data('slider');
             $('#channelslider-wrap').show();
-            $('#tags').append('<span class="label label-success">Channels</span>');
+            $('#tags').append('<span class="label label-warning">Channels</span>');
         } else {
             $('#channelslider-wrap').hide();
+        }
+        if (currentDim.slice > 1) {
+            sliceSlider.destroy();
+            sliceSlider = $('#slice').slider({min: 0, max: currentDim.slice - 1, value: 0})
+                .on('change', sliceSliderChanged)
+                .data('slider');
+            $('#sliceslider-wrap').show();
+            $('#tags').append('<span class="label label-success">Slices</span>');
+        } else {
+            $('#sliceslider-wrap').hide();
         }
     }
 
@@ -478,15 +510,17 @@ $(function () {
             existingDim = [];
 
             currentDim.pos = 1 + _.max(_.map(imgs, function (im) {
-                return im.meta_posidx || im.posidx;
+                return im.meta_pos || im.pos || 0;
             }));
             currentDim.frame = 1 + _.max(_.map(imgs, function (im) {
-                return im.frame;
+                return im.frame || 0;
             }));
             currentDim.ch = 1 + _.max(_.map(imgs, function (im) {
-                return im.chidx;
+                return im.ch || 0;
             }));
-            currentDim.slice = 1;//stub
+            currentDim.slice = 1 + _.max(_.map(imgs, function (im) {
+                return im.slice || 0;
+            }));
 
             if(currentDim.pos > 1)
                 existingDim.push('pos');
@@ -494,6 +528,8 @@ $(function () {
                 existingDim.push('frame');
             if(currentDim.ch > 1)
                 existingDim.push('ch');
+            if(currentDim.slice > 1)
+                existingDim.push('slice');
 
             var biggestDim = _.sortBy(Object.keys(currentDim),function(k){return 0-currentDim[k]})[0];
             currentFilter[biggestDim] = 0;
@@ -539,7 +575,9 @@ $(function () {
     var channelSlider = $('#channel').slider({min: 0, max: 0, value: 0})
         .on('change', channelSliderChanged)
         .data('slider');
-
+    var sliceSlider = $('#slice').slider({min: 0, max: 0, value: 0})
+        .on('change', sliceSliderChanged)
+        .data('slider');
     function pad(num, size) {
         var s = "000000000" + num;
         return s.substr(s.length - size);
@@ -550,9 +588,9 @@ $(function () {
         var s = dataset[dn];
         console.log(s, d);
         if (s.metaset) {
-            return d.folder + '/' + 'Pos0' + '/img_' + pad(d.frame, 9) + '_' + d.chname + '_000' + '.tif';
+            return d.folder + '/' + 'Pos0' + '/img_' + pad(d.frame, 9) + '_' + d.chname + '_'+ pad(d.slice,3) + '.tif';
         } else {
-            return s.folder + '/' + d.posname + '/img_' + pad(d.frame, 9) + '_' + d.chname + '_000' + '.tif';
+            return s.folder + '/' + d.posname + '/img_' + pad(d.frame, 9) + '_' + d.chname + '_' +pad(d.slice,3)  + '.tif';
         }
 
     }
@@ -593,16 +631,24 @@ $(function () {
             r = t.append('tr');
             r.append('td').html(im.uuid);
             r.append('td').html(path(currentDataset, im));
+            r.append('td').html(im.pos);
+            r.append('td').html(im.frame);
+            r.append('td').html(im.ch);
+            r.append('td').html(im.slice);
         });
     }
 
     function imgcsv_read(d) {
         d.x = +d.x;
         d.y = +d.y;
+        d.pos = +d.pos;
         d.frame = +d.frame;
-        d.posidx = +d.posidx;
-        d.chidx = +d.chidx;
-        d.meta_posidx = +d.meta_posidx;
+        d.ch = +d.ch;
+        d.slice = +d.slice;
+        d.meta_pos = +d.meta_pos;
+        d.meta_frame = +d.meta_frame;
+        d.meta_ch = +d.meta_ch;
+        d.meta_slice = +d.meta_slice;
         return d;
     }
 

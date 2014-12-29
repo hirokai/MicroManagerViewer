@@ -904,7 +904,7 @@
 				}
 			},
 			_triggerChangeEvent: function(oldValue, newValue) {
-				if(oldValue !== newValue) {
+				if(!this.inDrag || oldValue !== newValue) {
 					this._trigger('change', newValue);
 				}
 			},

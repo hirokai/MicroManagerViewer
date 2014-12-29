@@ -37,12 +37,20 @@
         background: #BABABA;
     }
 
+    #positionSlider .slider-handle {
+        background: #7f8a8a;
+    }
+
     #frameSlider .slider-handle {
-        background: pink;
+        background: #337ab7;
     }
 
     #channelSlider .slider-handle {
         background: #ffa11e;
+    }
+
+    #sliceSlider .slider-handle {
+        background: #5cb85c;
     }
 
     select {
@@ -65,6 +73,10 @@
 
     .btn:focus,.btn:active {
         outline: none !important;
+    }
+
+    #selectinfo {
+        width: 900px;
     }
 
 </style>
@@ -90,6 +102,19 @@
                     <button type="button" class="btn btn-default dim-select" data-value="frame" id="dim-frame">Frame</button>
                     <button type="button" class="btn btn-default dim-select" data-value="ch" id="dim-ch">Channel</button>
                     <button type="button" class="btn btn-default dim-select" data-value="pos" id="dim-pos">Position</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="slice" id="dim-slice">Slice</button>
+                </div>
+            </div>
+            <div>
+                <span>Preset</span>
+                <div class="btn-group" role="group" aria-label="...">
+                    <button type="button" class="btn btn-default dim-select" data-value="frame,pos" id="dim-posframe">Pos x Frame</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="frame,ch" id="dim-framech">Frame x Ch</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="pos,ch" id="dim-posch">Pos x Ch</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="frame" id="dim-frame">Frame</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="ch" id="dim-ch">Channel</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="pos" id="dim-pos">Position</button>
+                    <button type="button" class="btn btn-default dim-select" data-value="slice" id="dim-slice">Slice</button>
                 </div>
             </div>
             <div id="positionslider-wrap">
@@ -102,6 +127,9 @@
             </div>
             <div id="channelslider-wrap">
                 <span style="margin-right: 30px">Channel</span><input id="channel" data-slider-id='channelSlider' type="text" data-slider-min="0" data-slider-max="0" data-slider-step="1" data-slider-value="0"/>
+            </div>
+            <div id="sliceslider-wrap">
+                <span style="margin-right: 30px">Slice</span><input id="slice" data-slider-id='sliceSlider' type="text" data-slider-min="0" data-slider-max="0" data-slider-step="1" data-slider-value="0"/>
             </div>
             <div>
                 <pre id="selectinfo"></pre>
@@ -138,6 +166,10 @@
             <tr>
                 <th>UUID</th>
                 <th>Path</th>
+                <th>Pos</th>
+                <th>Frame</th>
+                <th>Channel</th>
+                <th>Slice</th>
             </tr>
             </thead>
             <tbody></tbody>
