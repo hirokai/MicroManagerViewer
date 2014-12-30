@@ -344,7 +344,12 @@ $(function () {
 
     $('.dim-preset').click(function (ev) {
         var el = $(ev.target);
-        selectDim(el.attr('data-value').split(','));
+        var dims = el.attr('data-value').split(',');
+        $('.dim-select').removeClass('active');
+        _.map(dims,function(d){
+            $('#dim-'+d).addClass('active');
+        });
+        selectDim(dims);
     });
 
     $('.dim-select').click(function (ev) {
@@ -359,15 +364,28 @@ $(function () {
 
     var maxImages = 500;
 
+    function myalert(msg){
+        var el = $('#message');
+        el.html('<span style="color: orange">'+msg+'</span>');
+        window.setTimeout(function(){
+            el.html('');
+        },2000);
+    }
+
     function updateImages(imgs, opt, keepZoom) {
+        dot = d3.select('g.dot');
+
         if (imgs.length > maxImages) {
-//            window.alert('Too many (>'+maxImages+') images. Filter by other conditions.');
+            myalert('Too many (>'+maxImages+') images. Filter by other conditions.');
+            dot = dot.selectAll('g').data([], function (d) {
+                return d.uuid;
+            });
+            dot.exit().remove();
             return;
         }
 
         //      console.log(imgs,opt);
         var opt = opt || {};
-        dot = d3.select('g.dot');
         dot = dot.selectAll('g').data(imgs, function (d) {
             return d.uuid;
         });
@@ -527,7 +545,7 @@ $(function () {
             selected = {};
             images = imgs;
             $('#tags').html('');
-            selectDim(['frame']);
+            $('.dim-select').removeClass('active');
 
             currentFilter = {pos: null, frame: null, ch: null, slice: null};
 

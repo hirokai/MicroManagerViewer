@@ -8,6 +8,7 @@ from test_config import datasets
 logging.basicConfig(level=logging.WARNING)
 
 force_imgout = False
+img_quality = ['s1'] # options: 'full', 's1'
 imgcount = 0
 
 
@@ -17,18 +18,6 @@ def is_number(s):
 		return True
 	except ValueError:
 		return False
-
-
-def convert(imgpath,outpath,method='scipy', size=0.25):
-	if method == 'ImageMagick':
-		import subprocess
-		subprocess.call(['convert', '-quiet', '-contrast-stretch', '0.15x0.02%', '-resize', '%d%%' % (size*100), imgpath, outpath])
-	elif method == 'scipy':
-		import tifffile
-		import scipy.misc,scipy.ndimage
-		img = tifffile.imread(imgpath)
-		img2 = scipy.ndimage.zoom(img,size)
-		scipy.misc.imsave(outpath, img2)
 
 
 def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,metaset_dim='pos'):
@@ -58,16 +47,10 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,me
 			objf = obj[fr]
 			frame = objf['FrameIndex']
 			slice = objf['SliceIndex']
-			uuid = objf['UUID']
+			uuid = objf['UUID'] or (set_uuid+'_'+fr)  # Old MicroManager files do not have UUID for images.
 			imgpath = os.path.join(folder, pos_subfolder, 'img_%09d_%s_%03d.tif' % (frame, chname, slice))
-			outpath = os.path.join(outfolder, '%s.png' % (uuid))
-			if force_imgout or not os.path.exists(outpath):
-				convert(imgpath,outpath,method='scipy',size=0.5)
-				folderimgcount += 1
-			outpath2 = os.path.join(outfolder, '%s_s1.jpg' % (uuid))
-			if force_imgout or not os.path.exists(outpath2):
-				convert(imgpath,outpath2,method='scipy',size=0.125)
-				folderimgcount += 1
+			import img_convert
+			img_convert.convert_multiple(set_uuid, uuid, imgpath, quality=img_quality, overwrite=force_imgout)
 			row = (folder, set_uuid, uuid
 			       , objf['PositionIndex']
 			       , frame
