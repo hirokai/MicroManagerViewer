@@ -103,16 +103,16 @@ function setupD3() {
 
     function zoomed() {
         var tr = d3.event.translate;
-        if(isNaN(tr[0])){
-            zoom.translate([0, 0]);
-            zoom.scale(1);
-            zoom.event(svg.transition().duration(500));
-        }else{
+        //if(isNaN(tr[0])){
+        //    zoom.translate([0, 0]);
+        //    zoom.scale(1);
+        //    zoom.event(svg.transition().duration(500));
+        //}else{
 //        console.log(d3.event.translate,d3.event.scale);
             container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
             currentScale = d3.event.scale;
             updateImageResolution(d3.event.scale);
-        }
+        //}
     }
 }
 
@@ -421,11 +421,11 @@ $(function () {
         dot.exit().remove();
         var timescale = function(t){
             var ts = _.map(imgs,function(d){return d.time;}).sort();
-            var intervals = [];
-            for(var i = 1; i < imgs.length; i++){
-                intervals.push(ts[i] - ts[i-1]);
-            }
-            var interval = _.min(intervals);
+            //var intervals = [];
+            //for(var i = 1; i < imgs.length; i++){
+            //    intervals.push(ts[i] - ts[i-1]);
+            //}
+            //var interval = _.min(intervals);
             var min = _.min(ts);
             var max = _.max(ts);
             return (t-min)/(max-min)*size*ts.length;
@@ -441,11 +441,12 @@ $(function () {
             var r = opt.tile ? (size * 1.1 * xi) :
                 (opt.mapmode_x == 'x' ? (-d.x / 10) :
                     (opt.mapmode_x == 'y' ? (-d.y / 10) :
-                        (opt.mapmode_x == 'time' ? timescale(d.time) :
-                            (opt.mapmode_x == 'frame' ? (d.frame * 30) :
-                                (opt.mapmode_x == 'ch' ? (d.ch * 30) :
-                                    (opt.mapmode_x == 'slice' ? (d.slice * 30) :
-                                        (opt.mapmode_x == 'const' ? 0 : 0)))))));
+                        (opt.mapmode_x == 'pos' ? d.pos * 30:
+                            (opt.mapmode_x == 'time' ? timescale(d.time) :
+                                (opt.mapmode_x == 'frame' ? (d.frame * 30) :
+                                    (opt.mapmode_x == 'ch' ? (d.ch * 30) :
+                                        (opt.mapmode_x == 'slice' ? (d.slice * 30) :
+                                            (opt.mapmode_x == 'const' ? 0 : 0))))))));
             return isNaN(r) ? 0 : r;
         };
         var y = function (d, i) {
@@ -453,11 +454,12 @@ $(function () {
             var r = opt.tile ? (size * 1.1 * yi) :
                 (opt.mapmode_y == 'x' ? (-d.x / 10) :
                     (opt.mapmode_y == 'y' ? (-d.y / 10) :
-                        (opt.mapmode_y == 'time' ? timescale(d.time) :
-                            (opt.mapmode_y == 'frame' ? (d.frame * 30) :
-                                (opt.mapmode_y == 'ch' ? (d.ch * 30) :
-                                    (opt.mapmode_y == 'slice' ? (d.slice * 30) :
-                                        (opt.mapmode_y == 'const' ? 0 : 0)))))));
+                        (opt.mapmode_y == 'pos' ? d.pos * 30:
+                            (opt.mapmode_y == 'time' ? timescale(d.time) :
+                                (opt.mapmode_y == 'frame' ? (d.frame * 30) :
+                                    (opt.mapmode_y == 'ch' ? (d.ch * 30) :
+                                        (opt.mapmode_y == 'slice' ? (d.slice * 30) :
+                                            (opt.mapmode_y == 'const' ? 0 : 0))))))));
             return isNaN(r) ? 0 : r;
         };
 
@@ -797,10 +799,10 @@ $(function () {
     function imgcsv_read(d) {
         d.x = +d.x;
         d.y = +d.y;
-        d.pos = +d.pos;
-        d.frame = +d.frame;
-        d.ch = +d.ch;
-        d.slice = +d.slice;
+        d.pos = +d.meta_pos || +d.pos;
+        d.frame = +d.meta_frame || +d.frame;
+        d.ch = +d.meta_ch || +d.ch;
+        d.slice = +d.meta_slice || +d.slice;
         d.meta_pos = +d.meta_pos;
         d.meta_frame = +d.meta_frame;
         d.meta_ch = +d.meta_ch;

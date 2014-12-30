@@ -83,6 +83,7 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,me
 			       , chname,
 					"")
 			if metaset:
+				print(metaset_idx,metaset_dim)
 				if metaset_dim == 'pos':
 					row = row + (metaset_idx,0,0,0)
 				elif metaset_dim == 'frame':
