@@ -20,7 +20,23 @@ def is_number(s):
 		return False
 
 
+
+def my_parsetime(str):
+	from datetime import timedelta,datetime
+	try:
+		offset = int(str[-5:])
+		delta = timedelta(hours = offset / 100)
+
+		fmt = "%Y-%m-%d %H:%M:%S"
+		time = datetime.strptime(str[:-6], fmt)
+		time -= delta
+		return time
+	except:
+		return None
+
+
 def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,metaset_dim='pos'):
+	from datetime import timedelta
 	folderimgcount = 0
 
 	logging.debug('readMetadataFolder(): %s, %s' % (folder, pos_subfolder))
@@ -46,17 +62,20 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,me
 			chname = obj[fr]['Channel']
 			objf = obj[fr]
 			frame = objf['FrameIndex']
+			etime = objf['ElapsedTime-ms']
+			stime = obj['Summary']['Time']
 			slice = objf['SliceIndex']
 			uuid = objf['UUID'] or (set_uuid+'_'+fr)  # Old MicroManager files do not have UUID for images.
 			imgpath = os.path.join(folder, pos_subfolder, 'img_%09d_%s_%03d.tif' % (frame, chname, slice))
 			import img_convert
 			img_convert.convert_multiple(set_uuid, uuid, imgpath, quality=img_quality, overwrite=force_imgout)
 			row = (folder, set_uuid, uuid
+			       , stime
 			       , objf['PositionIndex']
 			       , frame
 			       , objf['ChannelIndex']
 			       , objf['SliceIndex']
-			       , objf['ElapsedTime-ms']
+			       , etime
 			       , objf['PositionName']
 			       , objf['XPositionUm']
 			       , objf['YPositionUm']
@@ -76,6 +95,19 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,me
 	return res, set_uuid, imgcount
 
 
+def write_to_csv(poss, set_uuid, metaset=False):
+	import csv
+
+	csvpath = os.path.join('..', 'metadata', set_uuid + '.csv')
+	header = ['folder','set_uuid', 'uuid', 'stime', 'pos', 'frame', 'ch', 'slice', 'time', 'posname', 'x', 'y', 'framename', 'chname', 'slicename'] +\
+	         (['meta_pos','meta_frame','meta_ch','meta_slice'] if metaset else [])
+	with open(csvpath, 'wb') as f:
+		writer = csv.writer(f)
+		writer.writerow(header)
+		for pos in poss:
+			writer.writerow(pos)
+
+
 def updateDatasets():
 	import csv
 
@@ -88,19 +120,6 @@ def updateDatasets():
 
 
 datasets_processed = []
-
-
-def write_to_csv(poss, set_uuid, metaset=False):
-	import csv
-
-	csvpath = os.path.join('..', 'metadata', set_uuid + '.csv')
-	header = ['folder','set_uuid', 'uuid', 'pos', 'frame', 'ch', 'slice', 'time', 'posname', 'x', 'y', 'framename', 'chname', 'slicename'] +\
-	         (['meta_pos','meta_frame','meta_ch','meta_slice'] if metaset else [])
-	with open(csvpath, 'wb') as f:
-		writer = csv.writer(f)
-		writer.writerow(header)
-		for pos in poss:
-			writer.writerow(pos)
 
 
 def process_set(dataset):
@@ -116,16 +135,16 @@ def process_set(dataset):
 
 	# Sort by time or position
 	sort_by_time = True
-	key = 7 if sort_by_time else 3
+	key = 8 if sort_by_time else 4
 	pos_flatten = sorted(reduce(lambda c, d: c + d, map(lambda b: b[0], filter(lambda a: a is not None, poss))),
 	                     key=lambda e: e[key])
 
 	write_to_csv(pos_flatten, set_uuid)
 
-	num_pos = 1 + max(map(lambda a: a[3], pos_flatten))
-	num_fr = 1 + max(map(lambda a: a[4], pos_flatten))
-	num_ch = 1 + max(map(lambda a: a[5], pos_flatten))
-	num_sl = 1 + max(map(lambda a: a[6], pos_flatten))
+	num_pos = 1 + max(map(lambda a: a[4], pos_flatten))
+	num_fr = 1 + max(map(lambda a: a[5], pos_flatten))
+	num_ch = 1 + max(map(lambda a: a[6], pos_flatten))
+	num_sl = 1 + max(map(lambda a: a[7], pos_flatten))
 
 	import re
 
@@ -158,10 +177,10 @@ def process_metaset(ds):
 	                     key=lambda e: e[key])
 
 
-	num_pos = (1 + max(map(lambda a: a[14], pos_flatten))) if ds['dimension'] == 'pos' else  (1 + max(map(lambda a: a[3], pos_flatten)))
-	num_fr = (1 + max(map(lambda a: a[15], pos_flatten))) if ds['dimension'] == 'frame' else  (1 + max(map(lambda a: a[4], pos_flatten)))
-	num_ch = (1 + max(map(lambda a: a[16], pos_flatten))) if ds['dimension'] == 'ch' else  (1 + max(map(lambda a: a[5], pos_flatten)))
-	num_sl = (1 + max(map(lambda a: a[17], pos_flatten))) if ds['dimension'] == 'slice' else  (1 + max(map(lambda a: a[6], pos_flatten)))
+	num_pos = (1 + max(map(lambda a: a[15], pos_flatten))) if ds['dimension'] == 'pos' else  (1 + max(map(lambda a: a[4], pos_flatten)))
+	num_fr = (1 + max(map(lambda a: a[16], pos_flatten))) if ds['dimension'] == 'frame' else  (1 + max(map(lambda a: a[5], pos_flatten)))
+	num_ch = (1 + max(map(lambda a: a[17], pos_flatten))) if ds['dimension'] == 'ch' else  (1 + max(map(lambda a: a[6], pos_flatten)))
+	num_sl = (1 + max(map(lambda a: a[18], pos_flatten))) if ds['dimension'] == 'slice' else  (1 + max(map(lambda a: a[7], pos_flatten)))
 
 	import hashlib
 

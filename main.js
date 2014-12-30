@@ -1,5 +1,5 @@
 var container;
-var size = 12;
+var size = 26.3;
 // image size
 var mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
@@ -102,10 +102,17 @@ function setupD3() {
 
 
     function zoomed() {
+        var tr = d3.event.translate;
+        if(isNaN(tr[0])){
+            zoom.translate([0, 0]);
+            zoom.scale(1);
+            zoom.event(svg.transition().duration(500));
+        }else{
 //        console.log(d3.event.translate,d3.event.scale);
-        container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-        currentScale = d3.event.scale;
-        updateImageResolution(d3.event.scale);
+            container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+            currentScale = d3.event.scale;
+            updateImageResolution(d3.event.scale);
+        }
     }
 }
 
@@ -172,6 +179,7 @@ $(function () {
             var m2 = {positions: 'P', frames: 'T', channels: 'C', slices: 'Z'};
             var s2 = _.compact(_.map(dims,function(a){return d[a] > 1 ? (m2[a] + d[a]) : null;})).join(' x ');
             var str = d.name + ' <p>(' + d.images + ' images: '+s2+')</p>';
+            console.log(d.uuid);
             m.append('<li role="presentation" data-uuid="' + d.uuid + '" class="dmenu"><a href="#">' + str + '</a></li>');
             //
             //sel.append('option')
@@ -179,12 +187,14 @@ $(function () {
             //    .text(d.name);
         });
         $('.dmenu').click(function (ev) {
-            console.log(ev.target);
-            $(ev.target).parents('ul').children('li').removeClass('active');
-            var li = $(ev.target).parent('li');
-            li.addClass('active');
-            datasetChanged(dataset[li.attr('data-uuid')]);
+            var target = $(ev.target);
+            var el = target.tagName == 'li' ? target : target.parents('li');
+            console.log(el);
+            el.parents('ul').children('li').removeClass('active');
+            el.addClass('active');
+            datasetChanged(dataset[el.attr('data-uuid')]);
         });
+        $($('.dmenu > a')[0]).click();
     });
 
 
@@ -232,12 +242,13 @@ $(function () {
         var ds = _.map(remainingDim,function(d){
             return m[d];
         });
-        var s = imgs.length > 1 ? (imgs.length+' images (multiple '+ds.join(', ')+')') : (imgs.length == 0 ? 'No image' : '1 image')
+        var s = imgs.length > 1 ? (imgs.length+' images (multiple '+ds.join(', ')+')') : (imgs.length == 0 ? 'No image' : '1 image');
         var s2 = _.compact(_.map(currentFilter,function(v,k){
-            console.log(k,v)
             return v != null ? (m2[k] +'=' + v): null
-        })).join(', ');
-        return 'Showing '+s+' of ' + s2;
+        })).join(', ') + '.';
+        var s3 = showOpt.tile ? ('Tile, sorted by ' + showOpt.sortKey) :
+                    ('Mapping: x=' + showOpt.mapmode_x +', y='+showOpt.mapmode_y);
+        return 'Showing '+s+' of ' + s2 + ' ' + s3;
     }
 
     function channelSliderChanged() {
@@ -259,7 +270,7 @@ $(function () {
     }
 
 
-    var showOpt = {ignorePos: true, preloadCache: true};
+    var showOpt = {tile: true, sortKey: 'time', sortReverse: false, preloadCache: true, mapmode_x: 'x', mapmode_y: 'y'};
 
     var currentDim = {pos: null, frame: null, ch: null, slice: null};
     var currentFilter = {pos: null, frame: null, ch: null, slice: null};
@@ -279,13 +290,6 @@ $(function () {
 
         remainingDim = _.difference(existingDim,filteringDim);
 
-        if(_.contains(remainingDim,'pos')){
-            $('#pos-actual').attr('checked',!showOpt.ignorePos);
-            $('#pos-actual-div').show();
-        }else{
-            $('#pos-actual-div').hide();
-        }
-
         console.log(currentDim);
         if (_.contains(sel, 'pos')) {
             // https://github.com/seiyria/bootstrap-slider
@@ -294,7 +298,7 @@ $(function () {
                 .on('change', positionSliderChanged)
                 .data('slider');
             currentFilter.pos = 0;
-            showOpt.ignorePos = true;
+            showOpt.tile = true;
         }
 
 
@@ -339,8 +343,24 @@ $(function () {
         var imgs = selectImages(images);
         console.log(imgs.length);
         $('#selectinfo').html(getSelectInfo(imgs));
+        updateMappingTool();
         updateImages(imgs,showOpt);
     }
+
+    function updateMappingTool(){
+        var sortsel = $('#tile-sort');
+        sortsel.html('');
+        if(_.contains(remainingDim, 'pos') && currentDim.pos > 1)
+            sortsel.append('<option value="pos">Position index</option>');
+        if(_.contains(remainingDim, 'frame') && currentDim.frame > 1)
+            sortsel.append('<option value="frame">Frame index</option>');
+        if(_.contains(remainingDim, 'ch') && currentDim.ch > 1)
+            sortsel.append('<option value="ch">Channel index</option>');
+        if(_.contains(remainingDim, 'slice') && currentDim.slice > 1)
+            sortsel.append('<option value="slice">Slice index</option>');
+        sortsel.append('<option value="time">Time</option>');
+    }
+
 
     $('.dim-preset').click(function (ev) {
         var el = $(ev.target);
@@ -364,8 +384,8 @@ $(function () {
 
     var maxImages = 500;
 
-    function myalert(msg){
-        var el = $('#message');
+    function myalert(msg,elname){
+        var el = $(elname || '#message');
         el.html('<span style="color: orange">'+msg+'</span>');
         window.setTimeout(function(){
             el.html('');
@@ -373,15 +393,24 @@ $(function () {
     }
 
     function updateImages(imgs, opt, keepZoom) {
+        console.log(opt);
         dot = d3.select('g.dot');
 
         if (imgs.length > maxImages) {
-            myalert('Too many (>'+maxImages+') images. Filter by other conditions.');
+            $('#selectinfo').html('<span style="color: orange;">Too many (>'+maxImages+') images. Filter by other conditions.</span>');
             dot = dot.selectAll('g').data([], function (d) {
                 return d.uuid;
             });
             dot.exit().remove();
             return;
+        }
+
+        imgs = _.sortBy(imgs,function(im){
+//            console.log(im,showOpt.sortKey, im[showOpt.sortKey]);
+            return im[showOpt.sortKey];
+        });
+        if(opt.sortReverse){
+            imgs = imgs.reverse();
         }
 
         //      console.log(imgs,opt);
@@ -390,17 +419,46 @@ $(function () {
             return d.uuid;
         });
         dot.exit().remove();
+        var timescale = function(t){
+            var ts = _.map(imgs,function(d){return d.time;}).sort();
+            var intervals = [];
+            for(var i = 1; i < imgs.length; i++){
+                intervals.push(ts[i] - ts[i-1]);
+            }
+            var interval = _.min(intervals);
+            var min = _.min(ts);
+            var max = _.max(ts);
+            return (t-min)/(max-min)*size*ts.length;
+        };
         var appended = dot.enter().append("g");
         var col = Math.round(Math.sqrt(imgs.length)*1.25);
         var x = function (d, i) {
+            if(isNaN(d.time)){
+                console.error('d.time is NaN!');
+                console.log(d);
+            }
             var xi = i % col;
-            var r = opt.ignorePos ? (size * 1.1 * xi) : (-d.x / 10);
-            return r;
+            var r = opt.tile ? (size * 1.1 * xi) :
+                (opt.mapmode_x == 'x' ? (-d.x / 10) :
+                    (opt.mapmode_x == 'y' ? (-d.y / 10) :
+                        (opt.mapmode_x == 'time' ? timescale(d.time) :
+                            (opt.mapmode_x == 'frame' ? (d.frame * 30) :
+                                (opt.mapmode_x == 'ch' ? (d.ch * 30) :
+                                    (opt.mapmode_x == 'slice' ? (d.slice * 30) :
+                                        (opt.mapmode_x == 'const' ? 0 : 0)))))));
+            return isNaN(r) ? 0 : r;
         };
         var y = function (d, i) {
             var yi = Math.floor(i / col);
-            var r = opt.ignorePos ? (size * 1.1 * yi) : (-d.y / 10);
-            return r;
+            var r = opt.tile ? (size * 1.1 * yi) :
+                (opt.mapmode_y == 'x' ? (-d.x / 10) :
+                    (opt.mapmode_y == 'y' ? (-d.y / 10) :
+                        (opt.mapmode_y == 'time' ? timescale(d.time) :
+                            (opt.mapmode_y == 'frame' ? (d.frame * 30) :
+                                (opt.mapmode_y == 'ch' ? (d.ch * 30) :
+                                    (opt.mapmode_y == 'slice' ? (d.slice * 30) :
+                                        (opt.mapmode_y == 'const' ? 0 : 0)))))));
+            return isNaN(r) ? 0 : r;
         };
 
         appended.append('image')
@@ -410,6 +468,9 @@ $(function () {
             .attr('xlink:href', function (d) {
                 return imghref(imgbasename(currentDataset, d), 's1');
             })
+            //.attr('svg:title',function(d){
+            //    return d.pos;
+            //})
             .attr('data-basename', function (d) {
                 return imgbasename(currentDataset, d, 's1');
             })
@@ -449,6 +510,7 @@ $(function () {
             //         .duration(time)
             .attr("x", x)
             .attr("y", y);
+
         if (!keepZoom) {
             t.each('end', function () {
                 var els = $('image');
@@ -504,6 +566,7 @@ $(function () {
         } else {
             $('#channelslider-wrap').hide();
         }
+
         if (currentDim.frame > 1) {
             frameSlider.destroy();
             frameSlider = $('#frame').slider({min: 0, max: currentDim.frame - 1, value: 0})
@@ -516,6 +579,7 @@ $(function () {
             $('#frameslider-wrap').hide();
             $('#time').hide();
         }
+
         if (currentDim.ch > 1) {
             channelSlider.destroy();
             channelSlider = $('#channel').slider({min: 0, max: currentDim.ch - 1, value: 0})
@@ -598,12 +662,65 @@ $(function () {
         });
     }
 
-    $('#pos-actual').on('change', function (ev) {
-        showOpt.ignorePos = !ev.target.checked;
+    //
+    // Event handlers for options of mapping images on screen.
+    //
+
+    $('.map-select').click(function (ev) {
+        var el = $(ev.target);
+        $(".map-select").removeClass('active');
+        el.addClass('active');
+        if(el.attr('id') == 'map-tile'){
+            $('#sort-tool').show();
+            $('#xy-tool').hide();
+            showOpt.tile = true;
+        }else{
+            $('#sort-tool').hide();
+            $('#xy-tool').show();
+            showOpt.tile = false;
+        }
+        console.log('map-select clicked.');
         var imgs = selectImages(images);
-        updateImages(imgs, showOpt);
+        updateImages(imgs,showOpt);
+        $('#selectinfo').html(getSelectInfo(imgs));
     });
 
+    $('#tile-sort').on('change',function(){
+        showOpt.sortKey = $(this).val();
+        var imgs = selectImages(images);
+        updateImages(imgs,showOpt);
+        $('#selectinfo').html(getSelectInfo(imgs));
+    });
+
+    $('#sort-reverse').on('change',function(){
+        showOpt.sortReverse = this.checked;
+        var imgs = selectImages(images);
+        updateImages(imgs,showOpt);
+        $('#selectinfo').html(getSelectInfo(imgs));
+    });
+
+
+    $('.map-preset').click(function (ev) {
+        var el = $(ev.target);
+        var xy = el.attr('data-value').split(',');
+        $('#xcoord > option[value="'+xy[0]+'"]').attr('selected', 'selected');
+        $('#ycoord > option[value="'+xy[1]+'"]').attr('selected', 'selected');
+        $('#xcoord').trigger('change');
+        $('#ycoord').trigger('change');
+    });
+
+    $('#xcoord').on('change',function(ev){
+        showOpt.mapmode_x = $(this).val();
+        var imgs = selectImages(images);
+        updateImages(imgs, showOpt);
+        $('#selectinfo').html(getSelectInfo(imgs));
+    });
+    $('#ycoord').on('change',function(ev){
+        showOpt.mapmode_y = $(this).val();
+        var imgs = selectImages(images);
+        updateImages(imgs, showOpt);
+        $('#selectinfo').html(getSelectInfo(imgs));
+    });
 // With JQuery
     var positionSlider = $('#position').slider({min: 0, max: 0, value: 0})
         .on('change', positionSliderChanged)
@@ -688,7 +805,11 @@ $(function () {
         d.meta_frame = +d.meta_frame;
         d.meta_ch = +d.meta_ch;
         d.meta_slice = +d.meta_slice;
-        //console.log(d);
+        d.time = new Date(d.stime).valueOf() + parseInt(d.time);
+        if(isNaN(d.time)){
+            console.error('d.time is NaN!');
+            console.log(d);
+        }
         return d;
     }
 
