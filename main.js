@@ -1,5 +1,5 @@
 var container;
-var size = 26.3;
+var size = 263 / 2;
 // image size
 var mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
@@ -20,7 +20,7 @@ function setupD3() {
     height = (mobile ? h * 0.5 : 600) - margin.top - margin.bottom;
 
     zoom = d3.behavior.zoom()
-        .scaleExtent([0.2, 40])
+        .scaleExtent([0.02, 10])
         .on("zoom", zoomed);
 
 
@@ -28,32 +28,8 @@ function setupD3() {
         .style("width", width + margin.left + margin.right)
         .style("height", height + margin.top + margin.bottom)
         .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.right + ")")
+//        .attr("transform", "translate(" + margin.left + "," + margin.right + ")")
         .call(zoom);
-
-
-    // filters go in defs element
-    var defs = d3.select("#map").append("defs");
-
-    // create filter with id #drop-shadow
-    // height=130% so that the shadow is not clipped
-    var filter = defs.append("filter")
-        .attr("id", "autocontrast");
-    var tr = filter.append('feComponentTransfer');
-    var slope = 1;
-    var intercept = 0;
-    var feFuncR = tr.append('feFuncR');
-    feFuncR.attr('type', 'linear').attr('slope', slope).attr('intercept', intercept);
-    var feFuncG = tr.append('feFuncG');
-    feFuncG.attr('type', 'linear').attr('slope', slope).attr('intercept', intercept);
-    var feFuncB = tr.append('feFuncB');
-    feFuncB.attr('type', 'linear').attr('slope', slope).attr('intercept', intercept);
-
-    function changeFilter(slope, intercept) {
-        feFuncR.transition().duration(100).ease('linear').attr('slope', slope).attr('intercept', intercept);
-        feFuncG.transition().duration(100).ease('linear').attr('slope', slope).attr('intercept', intercept);
-        feFuncB.transition().duration(100).ease('linear').attr('slope', slope).attr('intercept', intercept);
-    }
 
 
     var rect = svg.append("rect")
@@ -70,6 +46,111 @@ function setupD3() {
         .attr({x: 10, y: 10, width: scale, height: 20})
         .style({fill: 'white'});
 
+    setupAxes(container);
+
+
+
+}
+
+var axisPos = {left: 60, right: 800, bottom: 550, top: 20};
+var axisW = axisPos.right-axisPos.left, axisH = axisPos.bottom - axisPos.top;
+
+function zoomed() {
+    var tr = d3.event.translate;
+    var scale = d3.event.scale;
+
+    //if(isNaN(tr[0])){
+    //    zoom.translate([0, 0]);
+    //    zoom.scale(1);
+    //    zoom.event(svg.transition().duration(500));
+    //}else{
+//        console.log(d3.event.translate,d3.event.scale);
+    container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+    currentScale = d3.event.scale;
+    updateImageResolution(d3.event.scale);
+
+    //update axes
+    xAxisScale.domain(calculateAxisDomain(showOpt.mapmode_x,tr,scale,'x'));
+    yAxisScale.domain(calculateAxisDomain(showOpt.mapmode_y,tr,scale,'y'));
+    yAxisScale.domain();
+    xAxis.scale(xAxisScale);
+    yAxis.scale(yAxisScale);
+
+    function job(mode,el){
+        if(_.contains(['pos','frame','ch','slice'],mode)){
+            if(currentScale > 0.1){
+                el.tickValues(null);
+//                el.tickValues(_.range(50));
+            }else{
+ //               el.tickValues(_.range(0,200,10));
+            }
+        }else if(mode == 'time') {
+            el.tickValues(null);
+        }else{
+            el.tickValues(null);
+        }
+    }
+    job(showOpt.mapmode_x,xAxis);
+    job(showOpt.mapmode_y,yAxis);
+    xAxisObj.call(xAxis);
+    yAxisObj.call(yAxis);
+
+    //}
+}
+
+function updateAxisLabels(){
+    var m = {pos: 'Position', frame: 'Frame', ch: 'Channel', slice: 'Slice'};
+    function job(mode,el){
+        if(_.contains(['pos','frame','ch','slice'],mode)) {
+            el.text(m[mode] + ' index');
+        }else if('x' == mode){
+            el.text('X position [um]')
+        }else if('y' == mode){
+            el.text('Y position [um]')
+        }else if('z' == mode){
+            el.text('Z position [um]')
+        }else if('time' == mode){
+            el.text('Time [msec]')
+        }else if('const' == mode){
+            el.text('')
+        }
+    }
+    job(showOpt.mapmode_x,xLabel);
+    job(showOpt.mapmode_y,yLabel);
+}
+
+function calculateAxisDomain(mode,tr,scale,ax) {
+    if(_.contains(['x','y','z'],mode)){
+        if(ax == 'x'){
+            return [(axisPos.left-tr[0])/scale,(axisPos.right-tr[0])/scale];
+        }else{
+            return [(axisPos.bottom-tr[1])/scale,(axisPos.top-tr[1])/scale];
+        }
+    }
+
+    var factor = size*showOpt.marginRatio;
+
+    if(_.contains(['pos','frame','ch','slice'], mode)){
+        //FIXME: This is incorrect for marginRatio other than 1.1
+        if(ax == 'x'){
+            return [((axisPos.left-tr[0])/factor)/scale-(2-showOpt.marginRatio)/2,((axisPos.right-tr[0])/factor)/scale-(2-showOpt.marginRatio)/2];
+        }else{
+            return [((axisPos.bottom-tr[1])/factor)/scale-(2-showOpt.marginRatio)/2,((axisPos.top-tr[1])/factor)/scale-(2-showOpt.marginRatio)/2];
+        }
+    }else if(mode == 'time'){
+        var imgs = selectImages(images);
+        var scale = timescale(imgs,0)[1];
+        if(ax == 'x'){
+            return [(axisPos.left-tr[0])/scale,(axisPos.right-tr[0])/scale];
+        }else{
+            return [(axisPos.bottom-tr[1])/scale,(axisPos.top-tr[1])/scale];
+        }
+    }else{
+        return [0,100];
+    }
+}
+
+function setupAxes(container){
     var s = 1200;
 
     container.append("g")
@@ -100,24 +181,44 @@ function setupD3() {
             return d;
         });
 
+    xAxisScale = d3.scale.linear().domain([0,100]).range([axisPos.left,axisPos.right]);
+    yAxisScale = d3.scale.linear().domain([0,100]).range([axisPos.bottom,axisPos.top]);
+    xAxis = d3.svg.axis().scale(xAxisScale).orient('bottom').ticks(10).innerTickSize([10]).tickFormat(d3.format("d"));
+    yAxis = d3.svg.axis().scale(yAxisScale).orient('left').ticks(10).innerTickSize([10]).tickFormat(d3.format("d"));
 
-    function zoomed() {
-        var tr = d3.event.translate;
-        //if(isNaN(tr[0])){
-        //    zoom.translate([0, 0]);
-        //    zoom.scale(1);
-        //    zoom.event(svg.transition().duration(500));
-        //}else{
-//        console.log(d3.event.translate,d3.event.scale);
-            container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-            currentScale = d3.event.scale;
-            updateImageResolution(d3.event.scale);
-        //}
-    }
+    xAxisObj = svg.append("g")
+        .attr('transform','translate(0,'+axisPos.bottom+')')
+        .attr("class",'x axis primary');
+//        .call(xAxis);
+    yAxisObj = svg.append("g")
+        .attr('transform','translate('+axisPos.left+',0)')
+        .attr("class",'y axis primary');
+ //       .call(yAxis);
+
+    xLabel = xAxisObj.append('g')
+        .attr('transform','translate('+(axisPos.left+(axisPos.right-axisPos.left)/2)+',40)')
+        .append('text')
+        .attr('text-anchor','middle')
+        .text('X position [um]');
+
+    yLabel = yAxisObj.append('g')
+        .attr('transform','translate(-40,'+(axisPos.top+(axisPos.bottom-axisPos.top)/2)+') rotate(270)')
+        .append('text')
+        .attr('text-anchor','middle')
+        .text('Y position [um]');
 }
 
 var currentScale;
 var dataset = {};
+
+var timescale = function(imgs,t){
+    var ts = _.map(imgs,function(d){return d.time;}).sort();
+    var min = _.min(ts);
+    var max = _.max(ts);
+    var scale = 1/(max-min)*size*ts.length
+    return [(t-min)*scale,scale];
+};
+
 
 function imghref(base, res) {
     var m = {s1: '_s1.jpg', full: '.png'};
@@ -147,14 +248,32 @@ function updateImageResolution(scale){
     }
 }
 
+var images = [];
+var currentDataset = null;
+
+var showOpt = {tile: true, sortKey: 'time', sortReverse: false, preloadCache: true, mapmode_x: 'x', mapmode_y: 'y', marginRatio: 1.1};
+
+var currentDim = {pos: null, frame: null, ch: null, slice: null};
+var currentFilter = {pos: null, frame: null, ch: null, slice: null};
+
+var filteringDim = [];
+var existingDim;
+var remainingDim;
+
+function selectImages(images) {
+    console.log('selectImages()',currentFilter,currentDim);
+    return _.filter(images, function (img) {
+        return (currentFilter.pos == null || (img.meta_pos || img.pos) == currentFilter.pos)
+            && (currentFilter.ch == null || (img.meta_ch || img.ch) == currentFilter.ch)
+            && (currentFilter.frame == null || (img.meta_frame || img.frame) == currentFilter.frame)
+            && (currentFilter.slice == null || (img.meta_slice || img.slice) == currentFilter.slice);
+    });
+}
+
 $(function () {
 
     setupD3();
 
-    var sel = d3.select('#data-select');
-
-    var images = [];
-    var currentDataset = null;
     dot = container.append("g")
         .attr("class", "dot");
 
@@ -196,17 +315,6 @@ $(function () {
         });
         $($('.dmenu > a')[0]).click();
     });
-
-
-    function selectImages(images) {
-        console.log('selectImages()',currentFilter,currentDim);
-        return _.filter(images, function (img) {
-            return (currentFilter.pos == null || (img.meta_pos || img.pos) == currentFilter.pos)
-                && (currentFilter.ch == null || (img.meta_ch || img.ch) == currentFilter.ch)
-                && (currentFilter.frame == null || (img.meta_frame || img.frame) == currentFilter.frame)
-                && (currentFilter.slice == null || (img.meta_slice || img.slice) == currentFilter.slice);
-        });
-    }
 
     function positionSliderChanged() {
         currentFilter.pos = positionSlider.getValue();
@@ -268,17 +376,6 @@ $(function () {
         updateInfo();
         $('#selectinfo').html(getSelectInfo(imgs));
     }
-
-
-    var showOpt = {tile: true, sortKey: 'time', sortReverse: false, preloadCache: true, mapmode_x: 'x', mapmode_y: 'y'};
-
-    var currentDim = {pos: null, frame: null, ch: null, slice: null};
-    var currentFilter = {pos: null, frame: null, ch: null, slice: null};
-
-    var primaryDim;
-    var filteringDim = [];
-    var existingDim;
-    var remainingDim;
 
     function selectDim(sel) {
         if (!(sel instanceof Array)) {
@@ -419,46 +516,36 @@ $(function () {
             return d.uuid;
         });
         dot.exit().remove();
-        var timescale = function(t){
-            var ts = _.map(imgs,function(d){return d.time;}).sort();
-            //var intervals = [];
-            //for(var i = 1; i < imgs.length; i++){
-            //    intervals.push(ts[i] - ts[i-1]);
-            //}
-            //var interval = _.min(intervals);
-            var min = _.min(ts);
-            var max = _.max(ts);
-            return (t-min)/(max-min)*size*ts.length;
-        };
         var appended = dot.enter().append("g");
         var col = Math.round(Math.sqrt(imgs.length)*1.25);
+        var interval =  size*showOpt.marginRatio;
         var x = function (d, i) {
             if(isNaN(d.time)){
                 console.error('d.time is NaN!');
                 console.log(d);
             }
             var xi = i % col;
-            var r = opt.tile ? (size * 1.1 * xi) :
-                (opt.mapmode_x == 'x' ? (-d.x / 10) :
-                    (opt.mapmode_x == 'y' ? (-d.y / 10) :
-                        (opt.mapmode_x == 'pos' ? d.pos * 30:
-                            (opt.mapmode_x == 'time' ? timescale(d.time) :
-                                (opt.mapmode_x == 'frame' ? (d.frame * 30) :
-                                    (opt.mapmode_x == 'ch' ? (d.ch * 30) :
-                                        (opt.mapmode_x == 'slice' ? (d.slice * 30) :
+            var r = opt.tile ? (size * showOpt.marginRatio * xi) :
+                (opt.mapmode_x == 'x' ? (-d.x) :
+                    (opt.mapmode_x == 'y' ? (-d.y) :
+                        (opt.mapmode_x == 'pos' ? d.pos * interval:
+                            (opt.mapmode_x == 'time' ? timescale(imgs,d.time)[0] :
+                                (opt.mapmode_x == 'frame' ? (d.frame * interval) :
+                                    (opt.mapmode_x == 'ch' ? (d.ch * interval) :
+                                        (opt.mapmode_x == 'slice' ? (d.slice * interval) :
                                             (opt.mapmode_x == 'const' ? 0 : 0))))))));
             return isNaN(r) ? 0 : r;
         };
         var y = function (d, i) {
             var yi = Math.floor(i / col);
-            var r = opt.tile ? (size * 1.1 * yi) :
-                (opt.mapmode_y == 'x' ? (-d.x / 10) :
-                    (opt.mapmode_y == 'y' ? (-d.y / 10) :
-                        (opt.mapmode_y == 'pos' ? d.pos * 30:
-                            (opt.mapmode_y == 'time' ? timescale(d.time) :
-                                (opt.mapmode_y == 'frame' ? (d.frame * 30) :
-                                    (opt.mapmode_y == 'ch' ? (d.ch * 30) :
-                                        (opt.mapmode_y == 'slice' ? (d.slice * 30) :
+            var r = opt.tile ? (size * showOpt.marginRatio * yi) :
+                (opt.mapmode_y == 'x' ? (-d.x) :
+                    (opt.mapmode_y == 'y' ? (-d.y) :
+                        (opt.mapmode_y == 'pos' ? d.pos * interval:
+                            (opt.mapmode_y == 'time' ? timescale(imgs,d.time)[0] :
+                                (opt.mapmode_y == 'frame' ? (d.frame * interval) :
+                                    (opt.mapmode_y == 'ch' ? (d.ch * interval) :
+                                        (opt.mapmode_y == 'slice' ? (d.slice * interval) :
                                             (opt.mapmode_y == 'const' ? 0 : 0))))))));
             return isNaN(r) ? 0 : r;
         };
@@ -522,7 +609,7 @@ $(function () {
                         xs.push(parseFloat($(this).attr('x')));
                         ys.push(parseFloat($(this).attr('y')));
                     });
-                    var targetscale = Math.min(width / (_.max(xs) - _.min(xs) + size * 1.1), height / (_.max(ys) - _.min(ys) + size * 1.1)) * 0.9;
+                    var targetscale = Math.min(width / (_.max(xs) - _.min(xs) + size * showOpt.marginRatio), height / (_.max(ys) - _.min(ys) + size * showOpt.marginRatio)) * 0.9;
                     var tr_x = 20 - targetscale * _.min(xs);
                     var tr_y = 20 - targetscale * _.min(ys);
                     //              console.log(tr_x, tr_y);
@@ -716,12 +803,14 @@ $(function () {
         var imgs = selectImages(images);
         updateImages(imgs, showOpt);
         $('#selectinfo').html(getSelectInfo(imgs));
+        updateAxisLabels();
     });
     $('#ycoord').on('change',function(ev){
         showOpt.mapmode_y = $(this).val();
         var imgs = selectImages(images);
         updateImages(imgs, showOpt);
         $('#selectinfo').html(getSelectInfo(imgs));
+        updateAxisLabels();
     });
 // With JQuery
     var positionSlider = $('#position').slider({min: 0, max: 0, value: 0})
@@ -744,7 +833,7 @@ $(function () {
 
     function path(dn, d) {
         var s = dataset[dn];
-        console.log(s, d);
+//        console.log(s, d);
         if (s.metaset) {
             return d.folder + '/' + 'Pos0' + '/img_' + pad(d.frame, 9) + '_' + d.chname + '_'+ pad(d.slice,3) + '.tif';
         } else {

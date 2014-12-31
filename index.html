@@ -25,11 +25,24 @@
         stroke: brown;
     }
 
+    .axis.primary {
+        fill: white;
+        font-size: 12px;
+        //vector-effect: non-scaling-stroke;
+    }
+    .axis path {
+    }
+
     .axis line {
         fill: none;
         stroke: #222;
         shape-rendering: crispEdges;
         vector-effect: non-scaling-stroke;
+    }
+
+    .tick line {
+        stroke: white;
+        stroke-width: 2px;
     }
 
     rect.imgbox {
@@ -188,7 +201,8 @@
                     <div class="btn-group" role="group" aria-label="...">
                         <button type="button" class="btn btn-sm btn-default map-preset" data-value="x,y" id="map-xy">Stage X/Y</button>
                         <button type="button" class="btn btn-sm btn-default map-preset" data-value="frame,slice" id="map-framech">Frame/Slice</button>
-                        <button type="button" class="btn btn-sm btn-default map-preset" data-value="time,pos" id="map-posch">Time/Pos</button>
+                        <button type="button" class="btn btn-sm btn-default map-preset" data-value="time,pos" id="map-timepos">Time/Pos</button>
+                        <button type="button" class="btn btn-sm btn-default map-preset" data-value="ch,pos" id="map-chpos">Ch/Pos</button>
                     </div>
                 </div>
            </div>

@@ -79,11 +79,11 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,me
 			       , objf['PositionName']
 			       , objf['XPositionUm']
 			       , objf['YPositionUm']
+			       , objf['ZPositionUm']
 			       , ""
 			       , chname,
 					"")
 			if metaset:
-				print(metaset_idx,metaset_dim)
 				if metaset_dim == 'pos':
 					row = row + (metaset_idx,0,0,0)
 				elif metaset_dim == 'frame':
@@ -100,7 +100,7 @@ def write_to_csv(poss, set_uuid, metaset=False):
 	import csv
 
 	csvpath = os.path.join('..', 'metadata', set_uuid + '.csv')
-	header = ['folder','set_uuid', 'uuid', 'stime', 'pos', 'frame', 'ch', 'slice', 'time', 'posname', 'x', 'y', 'framename', 'chname', 'slicename'] +\
+	header = ['folder','set_uuid', 'uuid', 'stime', 'pos', 'frame', 'ch', 'slice', 'time', 'posname', 'x', 'y', 'z', 'framename', 'chname', 'slicename'] +\
 	         (['meta_pos','meta_frame','meta_ch','meta_slice'] if metaset else [])
 	with open(csvpath, 'wb') as f:
 		writer = csv.writer(f)
@@ -178,10 +178,10 @@ def process_metaset(ds):
 	                     key=lambda e: e[key])
 
 
-	num_pos = (1 + max(map(lambda a: a[15], pos_flatten))) if ds['dimension'] == 'pos' else  (1 + max(map(lambda a: a[4], pos_flatten)))
-	num_fr = (1 + max(map(lambda a: a[16], pos_flatten))) if ds['dimension'] == 'frame' else  (1 + max(map(lambda a: a[5], pos_flatten)))
-	num_ch = (1 + max(map(lambda a: a[17], pos_flatten))) if ds['dimension'] == 'ch' else  (1 + max(map(lambda a: a[6], pos_flatten)))
-	num_sl = (1 + max(map(lambda a: a[18], pos_flatten))) if ds['dimension'] == 'slice' else  (1 + max(map(lambda a: a[7], pos_flatten)))
+	num_pos = (1 + max(map(lambda a: a[16], pos_flatten))) if ds['dimension'] == 'pos' else  (1 + max(map(lambda a: a[4], pos_flatten)))
+	num_fr = (1 + max(map(lambda a: a[17], pos_flatten))) if ds['dimension'] == 'frame' else  (1 + max(map(lambda a: a[5], pos_flatten)))
+	num_ch = (1 + max(map(lambda a: a[18], pos_flatten))) if ds['dimension'] == 'ch' else  (1 + max(map(lambda a: a[6], pos_flatten)))
+	num_sl = (1 + max(map(lambda a: a[19], pos_flatten))) if ds['dimension'] == 'slice' else  (1 + max(map(lambda a: a[7], pos_flatten)))
 
 	import hashlib
 
