@@ -86,6 +86,8 @@ function zoomed() {
             }
         }else if(mode == 'time') {
             el.tickValues(null);
+        }else if(mode == 'const') {
+            el.tickValues([0]);
         }else{
             el.tickValues(null);
         }
@@ -110,7 +112,7 @@ function updateAxisLabels(){
         }else if('z' == mode){
             el.text('Z position [um]')
         }else if('time' == mode){
-            el.text('Time [msec]')
+            el.text('Time [sec]')
         }else if('const' == mode){
             el.text('')
         }
@@ -130,7 +132,7 @@ function calculateAxisDomain(mode,tr,scale,ax) {
 
     var factor = size*showOpt.marginRatio;
 
-    if(_.contains(['pos','frame','ch','slice'], mode)){
+    if(_.contains(['pos','frame','ch','slice','const'], mode)){
         //FIXME: This is incorrect for marginRatio other than 1.1
         if(ax == 'x'){
             return [((axisPos.left-tr[0])/factor)/scale-(2-showOpt.marginRatio)/2,((axisPos.right-tr[0])/factor)/scale-(2-showOpt.marginRatio)/2];
@@ -138,12 +140,12 @@ function calculateAxisDomain(mode,tr,scale,ax) {
             return [((axisPos.bottom-tr[1])/factor)/scale-(2-showOpt.marginRatio)/2,((axisPos.top-tr[1])/factor)/scale-(2-showOpt.marginRatio)/2];
         }
     }else if(mode == 'time'){
-        var imgs = selectImages(images);
-        var scale = timescale(imgs,0)[1];
+//        console.log('timeScale=',showOpt.timeScale);
+        var f2 = showOpt.timeScale;
         if(ax == 'x'){
-            return [(axisPos.left-tr[0])/scale,(axisPos.right-tr[0])/scale];
+            return [((axisPos.left-tr[0])/f2)/scale,((axisPos.right-tr[0])/f2)/scale];
         }else{
-            return [(axisPos.bottom-tr[1])/scale,(axisPos.top-tr[1])/scale];
+            return [((axisPos.bottom-tr[1])/f2)/scale,((axisPos.top-tr[1])/f2)/scale];
         }
     }else{
         return [0,100];
@@ -251,7 +253,9 @@ function updateImageResolution(scale){
 var images = [];
 var currentDataset = null;
 
-var showOpt = {tile: true, sortKey: 'time', sortReverse: false, preloadCache: true, mapmode_x: 'x', mapmode_y: 'y', marginRatio: 1.1};
+var startTime = null;
+
+var showOpt = {tile: true, sortKey: 'time', sortReverse: false, preloadCache: true, mapmode_x: 'x', mapmode_y: 'y', marginRatio: 1.1, timeScale: 10};
 
 var currentDim = {pos: null, frame: null, ch: null, slice: null};
 var currentFilter = {pos: null, frame: null, ch: null, slice: null};
@@ -261,7 +265,6 @@ var existingDim;
 var remainingDim;
 
 function selectImages(images) {
-    console.log('selectImages()',currentFilter,currentDim);
     return _.filter(images, function (img) {
         return (currentFilter.pos == null || (img.meta_pos || img.pos) == currentFilter.pos)
             && (currentFilter.ch == null || (img.meta_ch || img.ch) == currentFilter.ch)
@@ -290,7 +293,7 @@ $(function () {
         return d;
     }, function (err, dat) {
         dataset = {};
-        console.log(dat);
+//        console.log(dat);
         _.map(dat, function (d) {
             dataset[d.uuid] = d;
             var m = $('#data-menu');
@@ -298,7 +301,6 @@ $(function () {
             var m2 = {positions: 'P', frames: 'T', channels: 'C', slices: 'Z'};
             var s2 = _.compact(_.map(dims,function(a){return d[a] > 1 ? (m2[a] + d[a]) : null;})).join(' x ');
             var str = d.name + ' <p>(' + d.images + ' images: '+s2+')</p>';
-            console.log(d.uuid);
             m.append('<li role="presentation" data-uuid="' + d.uuid + '" class="dmenu"><a href="#">' + str + '</a></li>');
             //
             //sel.append('option')
@@ -308,7 +310,6 @@ $(function () {
         $('.dmenu').click(function (ev) {
             var target = $(ev.target);
             var el = target.tagName == 'li' ? target : target.parents('li');
-            console.log(el);
             el.parents('ul').children('li').removeClass('active');
             el.addClass('active');
             datasetChanged(dataset[el.attr('data-uuid')]);
@@ -353,10 +354,10 @@ $(function () {
         var s = imgs.length > 1 ? (imgs.length+' images (multiple '+ds.join(', ')+')') : (imgs.length == 0 ? 'No image' : '1 image');
         var s2 = _.compact(_.map(currentFilter,function(v,k){
             return v != null ? (m2[k] +'=' + v): null
-        })).join(', ') + '.';
+        })).join(', ');
         var s3 = showOpt.tile ? ('Tile, sorted by ' + showOpt.sortKey) :
                     ('Mapping: x=' + showOpt.mapmode_x +', y='+showOpt.mapmode_y);
-        return 'Showing '+s+' of ' + s2 + ' ' + s3;
+        return 'Showing '+(s2 ? '' : 'all ')+s+(s2 ? (' of ' + s2) : '') + '. ' + s3;
     }
 
     function channelSliderChanged() {
@@ -381,13 +382,10 @@ $(function () {
         if (!(sel instanceof Array)) {
             sel = [sel];
         }
-        console.log(filteringDim);
         filteringDim = sel;
-        console.log(filteringDim);
 
         remainingDim = _.difference(existingDim,filteringDim);
 
-        console.log(currentDim);
         if (_.contains(sel, 'pos')) {
             // https://github.com/seiyria/bootstrap-slider
             positionSlider.destroy();
@@ -438,7 +436,6 @@ $(function () {
 
 
         var imgs = selectImages(images);
-        console.log(imgs.length);
         $('#selectinfo').html(getSelectInfo(imgs));
         updateMappingTool();
         updateImages(imgs,showOpt);
@@ -481,6 +478,12 @@ $(function () {
 
     var maxImages = 500;
 
+    function scaleTime(imgs,t){
+        startTime = _.min(_.map(images,function(im){return im.time;}));
+        console.log('scaleTime: ', (t-startTime)/1000);
+        return (t-startTime)/1000*showOpt.timeScale;
+    }
+
     function myalert(msg,elname){
         var el = $(elname || '#message');
         el.html('<span style="color: orange">'+msg+'</span>');
@@ -490,7 +493,6 @@ $(function () {
     }
 
     function updateImages(imgs, opt, keepZoom) {
-        console.log(opt);
         dot = d3.select('g.dot');
 
         if (imgs.length > maxImages) {
@@ -501,10 +503,11 @@ $(function () {
             dot.exit().remove();
             return;
         }
-
-        imgs = _.sortBy(imgs,function(im){
+        imgs = _.map(_.sortBy(imgs,function(im){
 //            console.log(im,showOpt.sortKey, im[showOpt.sortKey]);
             return im[showOpt.sortKey];
+        }),function(im){
+            return im;
         });
         if(opt.sortReverse){
             imgs = imgs.reverse();
@@ -521,15 +524,15 @@ $(function () {
         var interval =  size*showOpt.marginRatio;
         var x = function (d, i) {
             if(isNaN(d.time)){
-                console.error('d.time is NaN!');
-                console.log(d);
+        //        console.error('d.time is NaN!');
+        //        console.log(d);
             }
             var xi = i % col;
             var r = opt.tile ? (size * showOpt.marginRatio * xi) :
                 (opt.mapmode_x == 'x' ? (-d.x) :
                     (opt.mapmode_x == 'y' ? (-d.y) :
                         (opt.mapmode_x == 'pos' ? d.pos * interval:
-                            (opt.mapmode_x == 'time' ? timescale(imgs,d.time)[0] :
+                            (opt.mapmode_x == 'time' ? scaleTime(imgs,d.time) :
                                 (opt.mapmode_x == 'frame' ? (d.frame * interval) :
                                     (opt.mapmode_x == 'ch' ? (d.ch * interval) :
                                         (opt.mapmode_x == 'slice' ? (d.slice * interval) :
@@ -542,7 +545,7 @@ $(function () {
                 (opt.mapmode_y == 'x' ? (-d.x) :
                     (opt.mapmode_y == 'y' ? (-d.y) :
                         (opt.mapmode_y == 'pos' ? d.pos * interval:
-                            (opt.mapmode_y == 'time' ? timescale(imgs,d.time)[0] :
+                            (opt.mapmode_y == 'time' ? scaleTime(imgs,d.time) :
                                 (opt.mapmode_y == 'frame' ? (d.frame * interval) :
                                     (opt.mapmode_y == 'ch' ? (d.ch * interval) :
                                         (opt.mapmode_y == 'slice' ? (d.slice * interval) :
@@ -609,9 +612,9 @@ $(function () {
                         xs.push(parseFloat($(this).attr('x')));
                         ys.push(parseFloat($(this).attr('y')));
                     });
-                    var targetscale = Math.min(width / (_.max(xs) - _.min(xs) + size * showOpt.marginRatio), height / (_.max(ys) - _.min(ys) + size * showOpt.marginRatio)) * 0.9;
-                    var tr_x = 20 - targetscale * _.min(xs);
-                    var tr_y = 20 - targetscale * _.min(ys);
+                    var targetscale = Math.min((axisPos.right-axisPos.left) / (_.max(xs) - _.min(xs) + size * showOpt.marginRatio), (axisPos.bottom-axisPos.top) / (_.max(ys) - _.min(ys) + size * showOpt.marginRatio)) * 0.9;
+                    var tr_x = axisPos.left + 10 - targetscale * _.min(xs);
+                    var tr_y = axisPos.top + 10 - targetscale * _.min(ys);
                     //              console.log(tr_x, tr_y);
 
                     zoom.translate([tr_x, tr_y]);
@@ -627,8 +630,20 @@ $(function () {
         //});
     }
 
-    $('#play').click(function () {
+    $('#zoomAll').click(function () {
+        var xs = [], ys = [];
+        $('image').each(function () {
+            xs.push(parseFloat($(this).attr('x')));
+            ys.push(parseFloat($(this).attr('y')));
+        });
+        var targetscale = Math.min((axisPos.right-axisPos.left) / (_.max(xs) - _.min(xs) + size * showOpt.marginRatio), (axisPos.bottom-axisPos.top) / (_.max(ys) - _.min(ys) + size * showOpt.marginRatio)) * 0.9;
+        var tr_x = axisPos.left + 10 - targetscale * _.min(xs);
+        var tr_y = axisPos.top + 10 - targetscale * _.min(ys);
+        //              console.log(tr_x, tr_y);
 
+        zoom.translate([tr_x, tr_y]);
+        zoom.scale(targetscale);
+        zoom.event(svg.transition().duration(500));
     });
 
     function updateToolbar() {
@@ -702,9 +717,11 @@ $(function () {
 
             currentFilter = {pos: null, frame: null, ch: null, slice: null};
 
-            existingDim = [];
+            var ts = _.map(images,function(im){return im.time;});
+       //     console.log(ts);
+            startTime = _.min(ts);
 
-            console.log(s, currentDim);
+            existingDim = [];
 
             currentDim.pos = s.meta_pos || s.positions;
             currentDim.frame = s.meta_frame || s.frames;
@@ -722,15 +739,14 @@ $(function () {
 
             var biggestDim = _.sortBy(Object.keys(currentDim),function(k){return 0-currentDim[k]})[0];
             currentFilter[biggestDim] = 0;
-            console.log(biggestDim);
             selectDim([biggestDim]);
 
 
             updateToolbar();
-            console.log(currentDim);
+       //     console.log(currentDim);
 
 //            selectDim([biggestDim]);
-            console.log(biggestDim);
+       //     console.log(biggestDim);
             $('#dim-'+biggestDim).click();
             imgs = selectImages(images);
 
@@ -748,6 +764,7 @@ $(function () {
                     el.append(imel);
                 });
             }
+            $('#map-tile').click();
         });
     }
 
@@ -768,7 +785,7 @@ $(function () {
             $('#xy-tool').show();
             showOpt.tile = false;
         }
-        console.log('map-select clicked.');
+    //    console.log('map-select clicked.');
         var imgs = selectImages(images);
         updateImages(imgs,showOpt);
         $('#selectinfo').html(getSelectInfo(imgs));
@@ -812,7 +829,39 @@ $(function () {
         $('#selectinfo').html(getSelectInfo(imgs));
         updateAxisLabels();
     });
-// With JQuery
+
+    $('#switch-xy').click(function(){
+        var x = $('#xcoord').val();
+        var y = $('#ycoord').val();
+        $('#xcoord > option[value="'+y+'"]').attr('selected', 'selected');
+        $('#ycoord > option[value="'+x+'"]').attr('selected', 'selected');
+        $('#xcoord').trigger('change');
+        $('#ycoord').trigger('change');
+    });
+
+    $('#colorpicker-bg').on('change',function(){
+        $('svg').css('background','#'+$(this).val());
+    });
+
+    $('#colorpicker-fg').on('change',function(){
+        $('svg text,.axis.primary').css('fill','#'+$(this).val());
+    });
+
+    $('#colorpicker-grid').on('change',function(){
+        $('svg line').css('stroke','#'+$(this).val());
+    });
+
+    $('.color-preset').click(function (ev) {
+        var el = $(ev.target);
+        var cs = el.attr('data-value').split(',');
+        $('#colorpicker-bg').val(cs[0]).trigger('change');
+        $('#colorpicker-fg').val(cs[1]).trigger('change');
+        $('#colorpicker-grid').val(cs[2]).trigger('change');
+    });
+
+
+    // Sliders
+
     var positionSlider = $('#position').slider({min: 0, max: 0, value: 0})
         .on('change', positionSliderChanged)
         .data('slider');
@@ -833,7 +882,6 @@ $(function () {
 
     function path(dn, d) {
         var s = dataset[dn];
-//        console.log(s, d);
         if (s.metaset) {
             return d.folder + '/' + 'Pos0' + '/img_' + pad(d.frame, 9) + '_' + d.chname + '_'+ pad(d.slice,3) + '.tif';
         } else {
@@ -878,6 +926,7 @@ $(function () {
             r = t.append('tr');
             r.append('td').html(im.uuid);
             r.append('td').html(path(currentDataset, im));
+            r.append('td').html(numeral((im.time-startTime)/1000).format('0.0'));
             r.append('td').html(im.pos);
             r.append('td').html(im.frame);
             r.append('td').html(im.ch);
@@ -898,8 +947,8 @@ $(function () {
         d.meta_slice = +d.meta_slice;
         d.time = new Date(d.stime).valueOf() + parseInt(d.time);
         if(isNaN(d.time)){
-            console.error('d.time is NaN!');
-            console.log(d);
+            //console.error('d.time is NaN!');
+            //console.log(d);
         }
         return d;
     }
