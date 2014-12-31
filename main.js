@@ -25,8 +25,8 @@ function setupD3() {
 
 
     svg = d3.select("#map")
-        .style("width", width + margin.left + margin.right)
-        .style("height", height + margin.top + margin.bottom)
+        .style("width", ''+(width + margin.left + margin.right)+'px')
+        .style("height", ''+(height + margin.top + margin.bottom)+'px')
         .append("g")
 //        .attr("transform", "translate(" + margin.left + "," + margin.right + ")")
         .call(zoom);
@@ -480,7 +480,7 @@ $(function () {
 
     function scaleTime(imgs,t){
         startTime = _.min(_.map(images,function(im){return im.time;}));
-        console.log('scaleTime: ', (t-startTime)/1000);
+//        console.log('scaleTime: ', (t-startTime)/1000);
         return (t-startTime)/1000*showOpt.timeScale;
     }
 
@@ -718,7 +718,7 @@ $(function () {
             currentFilter = {pos: null, frame: null, ch: null, slice: null};
 
             var ts = _.map(images,function(im){return im.time;});
-       //     console.log(ts);
+            console.log(ts);
             startTime = _.min(ts);
 
             existingDim = [];
@@ -809,8 +809,8 @@ $(function () {
     $('.map-preset').click(function (ev) {
         var el = $(ev.target);
         var xy = el.attr('data-value').split(',');
-        $('#xcoord > option[value="'+xy[0]+'"]').attr('selected', 'selected');
-        $('#ycoord > option[value="'+xy[1]+'"]').attr('selected', 'selected');
+        $('#xcoord').val(xy[0]);
+        $('#ycoord').val(xy[1]);
         $('#xcoord').trigger('change');
         $('#ycoord').trigger('change');
     });
@@ -833,8 +833,10 @@ $(function () {
     $('#switch-xy').click(function(){
         var x = $('#xcoord').val();
         var y = $('#ycoord').val();
-        $('#xcoord > option[value="'+y+'"]').attr('selected', 'selected');
-        $('#ycoord > option[value="'+x+'"]').attr('selected', 'selected');
+        $('#xcoord').val(y);
+        $('#ycoord').val(x);
+        //$('#xcoord > option[value="'+y+'"]').attr('selected', 'selected');
+        //$('#ycoord > option[value="'+x+'"]').attr('selected', 'selected');
         $('#xcoord').trigger('change');
         $('#ycoord').trigger('change');
     });
@@ -923,14 +925,16 @@ $(function () {
         var t = d3.select('#info tbody');
         t.html('');
         _.map(selected, function (im) {
+            var sec = (im.time-startTime)/1000;
+            console.log(sec,im);
             r = t.append('tr');
             r.append('td').html(im.uuid);
             r.append('td').html(path(currentDataset, im));
-            r.append('td').html(numeral((im.time-startTime)/1000).format('0.0'));
-            r.append('td').html(im.pos);
-            r.append('td').html(im.frame);
-            r.append('td').html(im.ch);
-            r.append('td').html(im.slice);
+            r.append('td').html(''+Math.floor(sec)+'.'+(Math.floor(sec*10)%10));
+            r.append('td').html(''+im.pos);
+            r.append('td').html(''+im.frame);
+            r.append('td').html(''+im.ch);
+            r.append('td').html(''+im.slice);
         });
     }
 
@@ -945,7 +949,7 @@ $(function () {
         d.meta_frame = +d.meta_frame;
         d.meta_ch = +d.meta_ch;
         d.meta_slice = +d.meta_slice;
-        d.time = new Date(d.stime).valueOf() + parseInt(d.time);
+        d.time = moment(d.stime, 'YYYY-MM-DD HHmm:ss Z').valueOf() + parseInt(d.time);
         if(isNaN(d.time)){
             //console.error('d.time is NaN!');
             //console.log(d);
