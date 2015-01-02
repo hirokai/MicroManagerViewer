@@ -8,7 +8,7 @@ from test_config import datasets
 logging.basicConfig(level=logging.WARNING)
 
 force_imgout = False
-img_quality = ['s1'] # options: 'full', 's1'
+img_quality = ['half','s1'] # options: 'half', 's1'
 imgcount = 0
 
 

@@ -234,7 +234,7 @@ function imgbasename(dn, d) {
 
 function updateImageResolution(scale){
 //    console.log('updateImageResolution(): ', d3.event.scale);
-    if(scale > 20){
+    if(scale > 2.5){
         var count = 0;
         $('svg image').each(function(i,el){
             var base = $(el).attr('data-basename');
@@ -476,7 +476,7 @@ $(function () {
         }
     });
 
-    var maxImages = 500;
+    var maxImages = 1000;
 
     function scaleTime(imgs,t){
         startTime = _.min(_.map(images,function(im){return im.time;}));
