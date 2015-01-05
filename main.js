@@ -37,6 +37,7 @@ var App = React.createClass({
             d.dims.frame = d.meta_frame || d.frames;
             d.dims.ch = d.meta_ch || d.channels;
             d.dims.slice = d.meta_slice || d.slices;
+            d.images = +d.images;
             return d;
         }, function (err, dat) {
             ds = {};
@@ -44,7 +45,6 @@ var App = React.createClass({
                 ds[d.uuid] = d;
             });
             self.setState({datasets: ds});
-            console.log(ds);
             $('.dmenu').click(function (ev) {
                 var target = $(ev.target);
                 var el = target.tagName == 'li' ? target : target.parents('li');
@@ -70,12 +70,18 @@ var DataSetEntry = React.createClass({
 });
 
 var RightPane = React.createClass({
+    propTypes: {
+        dataset: React.PropTypes.object
+    },
     getInitialState(){
-        return {images: [],
-            coord: {pos: null, frame: null, ch: null, slice: null}, selectedImages: []
+        return {images: []
+            , dims: {pos: null, frame: null, ch: null, slice: null}
+            , coord: {pos: null, frame: null, ch: null, slice: null}
+            , selectedImages: []  //Shown images.
             , filterDims: {pos: false, frame: false, ch: false, slice: false}
             , remainingDim: []
-            , show: {tile: true, mapX: 'x', mapY: 'y',sortKey: 'time'}
+            , selected: {}  // Selected by clicking.
+            , show: {tile: true, mapX: 'x', mapY: 'y',sortKey: 'time', marginRatio: 1.1}
             , startTime: null
         };
     },
@@ -108,7 +114,7 @@ var RightPane = React.createClass({
                     </div>
                 </div>
                 <div style={{clear: 'both'}}></div>
-                <ImgPanel images={this.state.selectedImages} showOpt={this.state.show}/>
+                <ImgPanel dataset={this.props.dataset} images={this.state.selectedImages} showOpt={this.state.show} width={900} height={600} preloadCache={true}/>
                 <ImgInfo/>
             </div>;
     },
@@ -127,46 +133,24 @@ var RightPane = React.createClass({
         var v = _.extend({},this.state.show);
         v.tile = true;
         this.setState({show: v});
-        console.log('onClickTile()',v,this.state.show);
     },
     onClickXY() {
         var v = _.extend({},this.state.show);
         v.tile = false;
         this.setState({show: v});
-        console.log('onClickXY()',v,this.state.show);
     },
     coordChanged(v) {
+        var self = this;
         console.log('coord changed',v);
         var o = {pos: this.state.coord.pos, frame: this.state.coord.frame, ch: this.state.coord.ch, slice: this.state.coord.slice};
         o[v.key] = v.value;
         console.log(o);
-        this.setState({coord: o});
-    },
-    frameChanged(v) {
-        this.state.coord[this.props.dim] = v;
-
-        this.state.selectedImages = selectImages(images);
-        updateImages(this.state.selectedImages, this.state.showOpt, true);
-
-
-        //var mintime = new Date('1970-01-01');
-        //var maxtime = new Date('2100-01-01');
-        var maxtime = 0;
-        var mintime = 1000 * 60 * 60 * 24 * 365 * 20;  //  20 years
-        _.map(state.selectedImages, function (im) {
-            mintime = Math.min(im.time, mintime);
-            maxtime = Math.max(im.time, maxtime);
+        var rem = [];
+        _.map(['pos','frame','ch','slice'],function(k){
+            if(self.state.dims[k] > 1 && !self.state.filterDims[k]) rem.push(k);
         });
-        $('#time').html('' + numeral(mintime / 1000).format('0.0') + ' - ' + numeral(maxtime / 1000).format('0.0') + ' msec.');
-//        $('#selectinfo').html(getSelectInfo(imgs));
-
-        this.setState({state: state});
-    },
-    chChanged() {
-        console.log('ch changed');
-    },
-    sliceChanged() {
-        console.log('slice changed');
+        console.log(this.state.images);
+        this.setState({coord: o, selectedImages: this.selectImages(this.state.images, o), remainingDim: rem});
     },
     filterDimChanged(dims){
         this.setState({filterDims: dims});
@@ -177,7 +161,8 @@ var RightPane = React.createClass({
             xs.push(parseFloat($(this).attr('x')));
             ys.push(parseFloat($(this).attr('y')));
         });
-        var targetscale = Math.min((axisPos.right-axisPos.left) / (_.max(xs) - _.min(xs) + size * state.show.marginRatio), (axisPos.bottom-axisPos.top) / (_.max(ys) - _.min(ys) + size * state.show.marginRatio)) * 0.9;
+        var targetscale = Math.min((axisPos.right-axisPos.left) / (_.max(xs) - _.min(xs) + size * this.state.show.marginRatio),
+                (axisPos.bottom-axisPos.top) / (_.max(ys) - _.min(ys) + size * this.state.show.marginRatio)) * 0.9;
         var tr_x = axisPos.left + 10 - targetscale * _.min(xs);
         var tr_y = axisPos.top + 10 - targetscale * _.min(ys);
         //              console.log(tr_x, tr_y);
@@ -186,22 +171,26 @@ var RightPane = React.createClass({
         zoom.scale(targetscale);
         zoom.event(svg.transition().duration(500));
     },
-    selectImages(images) {
+    selectImages(images, coord) {
+        console.log(images.length);
+        var self = this;
         var res = _.filter(images, function (img) {
-            return (this.state.coord.pos == null || (img.meta_pos || img.pos) == this.state.coord.pos)
-                && (this.state.coord.ch == null || (img.meta_ch || img.ch) == this.state.coord.ch)
-                && (this.state.coord.frame == null || (img.meta_frame || img.frame) == this.state.coord.frame)
-                && (this.state.coord.slice == null || (img.meta_slice || img.slice) == this.state.coord.slice);
+            return (coord.pos == null || (img.meta_pos || img.pos) == coord.pos)
+                && (coord.ch == null || (img.meta_ch || img.ch) == coord.ch)
+                && (coord.frame == null || (img.meta_frame || img.frame) == coord.frame)
+                && (coord.slice == null || (img.meta_slice || img.slice) == coord.slice);
         });
-        var rem = [];
-        _.map(['pos','frame','ch','slice'],function(k){
-            if(this.props.dims[k] > 1 && !this.state.filterDims[k]) rem.push(k);
-        });
-        this.setState({remainingDim: rem, selectedImages: res});
+        return res;
     },
-    componentDidMount() {
+    componentDidUpdate(prevProps) {
         var s = this.props.dataset;
-        if(!s)return;
+        if(s && s != prevProps.dataset)
+            this.datasetChanged();
+    },
+    datasetChanged() {
+        var self = this;
+        console.log(this.props.dataset);
+        var s = this.props.dataset;
         d3.csv("metadata/" + s.uuid + ".csv", d => {
             d.x = +d.x;
             d.y = +d.y;
@@ -221,39 +210,27 @@ var RightPane = React.createClass({
             return d;
         }, (error, imgs) => {
             console.log(imgs);
-            self.setState({images: imgs});
 
             var ts = _.map(imgs,function(im){return im.time;});
-            this.state.startTime = _.min(ts);
 
-            state.dims.pos = s.meta_pos || s.positions;
-            state.dims.frame = s.meta_frame || s.frames;
-            state.dims.ch = s.meta_ch || s.channels;
-            state.dims.slice = s.meta_slice || s.slices;
+            var startTime = _.min(ts);
 
-            var biggestDim = _.sortBy(Object.keys(state.dims),function(k){return 0-state.dims[k]})[0];
-            state.coord[biggestDim] = 0;
-            state.filterDims.pos = false;
-            state.filterDims.frame = false;
-            state.filterDims.ch = false;
-            state.filterDims.slice = false;
-            state.filterDims[biggestDim] = true;
+            var dims = {};
+            dims.pos = s.meta_pos || s.positions;
+            dims.frame = s.meta_frame || s.frames;
+            dims.ch = s.meta_ch || s.channels;
+            dims.slice = s.meta_slice || s.slices;
 
-            updateToolbar();
-            imgs = this.selectImages(imgs);
-            updateImages(imgs, this.state.tile, this.state.mapX, this.state.mapY);
+            var biggestDim = _.sortBy(Object.keys(self.state.dims),function(k){return 0-self.state.dims[k]})[0];
+            var coord = _.extend({},self.state.coord);
+            coord[biggestDim] = 0;
 
-            if (state.show.preloadCache) {
-                $('#imgcache').remove();
-                var el = $('<div id="imgcache"></div>');
-                $(document.body).append(el);
-                el.hide();
-                _.map(images, function (im) {
-                    var imel = $('<img/>');
-                    imel.attr('src', imghref(imgbasename(currentDataset, im),'s1'));
-                    el.append(imel);
-                });
-            }
+            var filterDims = _.extend({},self.state.filterDims);
+            filterDims.frame = false;
+            filterDims.ch = false;
+            filterDims.slice = false;
+            filterDims[biggestDim] = true;
+            self.setState({images: imgs, dims: dims, coord: coord, filterDims: filterDims});
         });
     }
 });
@@ -316,10 +293,10 @@ var DimFilters = React.createClass({
                 </div>
             </div>
 
-            {this.state.filterDims.pos ? <Slider dim='pos' max={this.props.dims.pos} onChange={this.onChangeCoord}/> : ''}
-            {this.state.filterDims.frame ? <Slider dim='frame' max={this.props.dims.frame} onChange={this.props.onChangeCoord}/> : ''}
-            {this.state.filterDims.ch ? <Slider dim='ch' max={this.props.dims.ch} onChange={this.props.onChangeCoord}/> : ''}
-            {this.state.filterDims.slice ? <Slider dim='slice' max={this.props.dims.slice} onChange={this.props.onChangeCoord}/> : ''}
+            {this.state.filterDims.pos ? <Slider dim='pos' max={this.props.dims.pos-1} onChange={this.onChangeCoord}/> : ''}
+            {this.state.filterDims.frame ? <Slider dim='frame' max={this.props.dims.frame-1} onChange={this.props.onChangeCoord}/> : ''}
+            {this.state.filterDims.ch ? <Slider dim='ch' max={this.props.dims.ch-1} onChange={this.props.onChangeCoord}/> : ''}
+            {this.state.filterDims.slice ? <Slider dim='slice' max={this.props.dims.slice-1} onChange={this.props.onChangeCoord}/> : ''}
         </div>;
     },
     onChangeCoord(ev){
@@ -462,32 +439,32 @@ var MapTools = React.createClass({
     },
     xyTool: function(){
         return <div id="xy-tool">
-            <label htmlFor="xcoord">X</label>
-            <select name="" id="xcoord" value={this.props.show.mapX} onChange={this.onChangeXCoord}>
-                    {this.coordOpts()}
-            </select>
-            <span id="switch-xy" style={{cursor: 'pointer'}} onClick={this.onClickSwitch}>&nbsp;&#8596;&nbsp;</span>
-            <label htmlFor="ycoord">Y</label>
-            <select name="" id="ycoord" value={this.props.show.mapY}>
-                    {this.coordOpts()}
-            </select>
-            <span style={{marginLeft: '30px'}}>Preset</span>
+                    <label htmlFor="xcoord">X</label>
+                    <select name="" id="xcoord" value={this.props.show.mapX} onChange={this.onChangeXCoord}>
+                            {this.coordOpts()}
+                    </select>
+                    <span id="switch-xy" style={{cursor: 'pointer'}} onClick={this.onClickSwitch}>&nbsp;&#8596;&nbsp;</span>
+                    <label htmlFor="ycoord">Y</label>
+                    <select name="" id="ycoord" value={this.props.show.mapY}>
+                            {this.coordOpts()}
+                    </select>
+                    <span style={{marginLeft: '30px'}}>Preset</span>
 
-            <div className="btn-group" role="group" aria-label="...">
-                <button type="button" className="btn btn-xs btn-default map-preset" data-value="x,y"
-                    id="map-xy" onClick={this.onClickXYPreset}>Stage X/Y
-                </button>
-                <button type="button" className="btn btn-xs btn-default map-preset" data-value="frame,slice"
-                    id="map-framech" onClick={this.onClickXYPreset}>Frame/Slice
-                </button>
-                <button type="button" className="btn btn-xs btn-default map-preset" data-value="time,pos"
-                    id="map-timepos" onClick={this.onClickXYPreset}>Time/Pos
-                </button>
-                <button type="button" className="btn btn-xs btn-default map-preset" data-value="ch,pos"
-                    id="map-chpos" onClick={this.onClickXYPreset}>Ch/Pos
-                </button>
-            </div>
-        </div>;
+                    <div className="btn-group" role="group" aria-label="...">
+                        <button type="button" key='1' className="btn btn-xs btn-default map-preset" data-value="x,y"
+                            id="map-xy" onClick={this.onClickXYPreset}>Stage X/Y
+                        </button>
+                        <button type="button" key='2' className="btn btn-xs btn-default map-preset" data-value="frame,slice"
+                            id="map-framech" onClick={this.onClickXYPreset}>Frame/Slice
+                        </button>
+                        <button type="button" key='3' className="btn btn-xs btn-default map-preset" data-value="time,pos"
+                            id="map-timepos" onClick={this.onClickXYPreset}>Time/Pos
+                        </button>
+                        <button type="button" key='4' className="btn btn-xs btn-default map-preset" data-value="ch,pos"
+                            id="map-chpos" onClick={this.onClickXYPreset}>Ch/Pos
+                        </button>
+                    </div>
+                </div>;
     },
     onClickSwitch() {
         this.props.onMapXYChange([this.props.show.mapY,this.props.show.mapX]);
@@ -529,7 +506,7 @@ var MapTools = React.createClass({
         return options;
     },
     coordOpts() {
-        return [<option value='const'>Constant</option>,
+        return [<option value='const' key="const">Constant</option>,
         <option value="x" key="x">Stage X</option>,
         <option value="y" key="y">Stage Y</option>,
         <option value="z" key="z">Stage Z</option>,
@@ -541,15 +518,6 @@ var MapTools = React.createClass({
     }
 });
 
-var ImgPanel = React.createClass({
-    render() {
-        return <svg id="map"></svg>
-    },
-    componentDidMount() {
-        updateImages(this.props.images,this.props.showOpt);
-    }
-
-});
 
 var ImgInfo = React.createClass({
     render: function(){
@@ -598,7 +566,6 @@ var ImgInfo = React.createClass({
 });
 
 $(function () {
-    setupD3();
     React.render(<App/>, document.getElementById("app"));
 });
 

@@ -6,76 +6,81 @@ var mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.te
 var w = screen.width;
 var h = screen.height;
 
-var margin = {top: -5, right: -5, bottom: -5, left: -5};
-var width;
-var height;
-
 var zoom;
-
 var svg;
 
-setupD3 = function() {
+var ImgPanel = React.createClass({
+    propTypes: {
+        dataset: React.PropTypes.object.isRequired,
+        width: React.PropTypes.number.isRequired,
+        height: React.PropTypes.number.isRequired,
+        images: React.PropTypes.array.isRequired,
+        preloadCache: React.PropTypes.bool,
+        showOpt: React.PropTypes.object
+    },
+    render() {
+        return <svg id="map"></svg>
+    },
+    componentDidMount() {
+        this.setupD3();
+        this.updateImages(this.props.images,this.props.showOpt);
+    },
+    componentDidUpdate() {
+        this.updateImages(this.props.images, this.props.showOpt);
+        if (this.props.preloadCache) {
+            this.preloadCache();
+        }
+    },
+    margin: {top: -5, right: -5, bottom: -5, left: -5},
+    setupD3() {
+        this.width = (mobile ? w * 0.9 : this.props.width) - this.margin.left - this.margin.right;
+        this.height = (mobile ? h * 0.5 : this.props.height) - this.margin.top - this.margin.bottom;
 
-    width = (mobile ? w * 0.9 : 900) - margin.left - margin.right;
-    height = (mobile ? h * 0.5 : 600) - margin.top - margin.bottom;
+        zoom = d3.behavior.zoom()
+            .scaleExtent([0.02, 10])
+            .on("zoom", this.zoomed);
 
-    zoom = d3.behavior.zoom()
-        .scaleExtent([0.02, 10])
-        .on("zoom", zoomed);
+        svg = d3.select("#map")
+            .style("width", '' + (this.width + this.margin.left + this.margin.right) + 'px')
+            .style("height", '' + (this.height + this.margin.top + this.margin.bottom) + 'px')
+            .append("g")
+            .call(zoom);
 
+        var rect = svg.append("rect")
+            .attr("width", this.width)
+            .attr("height", this.height)
+            .style("fill", "none")
+            .style("pointer-events", "all");
 
-    svg = d3.select("#map")
-        .style("width", ''+(width + margin.left + margin.right)+'px')
-        .style("height", ''+(height + margin.top + margin.bottom)+'px')
-        .append("g")
-//        .attr("transform", "translate(" + margin.left + "," + margin.right + ")")
-        .call(zoom);
+        var scale = 1;
 
+        container = svg.append("g");
+        var scaleBar = svg.append('g');
+        scaleBar.append('rect')
+            .attr({x: 10, y: 10, width: scale, height: 20})
+            .style({fill: 'white'});
 
-    var rect = svg.append("rect")
-        .attr("width", width)
-        .attr("height", height)
-        .style("fill", "none")
-        .style("pointer-events", "all");
+        setupAxes(container);
 
-    var scale = 1;
+        dot = container.append("g")
+            .attr("class", "dot");
+    },
+    updateImages(imgs,opt) {
+        _updateImages(this.props.dataset,imgs,opt,this.click)
+    },
+    click(d){
+        function addKey() {
+            var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+            return (isMac && d3.event.metaKey) || (!isMac && d3.event.shiftKey);
+        }
 
-    container = svg.append("g");
-    var scaleBar = svg.append('g');
-    scaleBar.append('rect')
-        .attr({x: 10, y: 10, width: scale, height: 20})
-        .style({fill: 'white'});
-
-    setupAxes(container);
-
-
-    dot = container.append("g")
-        .attr("class", "dot");
-};
-
-
-function scaleTime(imgs,t){
-    var startTime = _.min(_.map(images,function(im){return im.time;}));
-//        console.log('scaleTime: ', (t-startTime)/1000);
-    return (t-startTime)/1000*state.show.timeScale;
-}
-
-
-// Update images in svg panel and info.
-function updateImages(imgs, opt) {
-    function addKey() {
-        var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-        return (isMac && d3.event.metaKey) || (!isMac && d3.event.shiftKey);
-    }
-
-    function click(d) {
         if (!addKey()) {
-            state.selected = {};
+            this.props.onChangeSelected({});
         }
         if (state.selected[d.uuid]) {
-            delete state.selected[d.uuid];
+//            delete state.selected[d.uuid];
         } else {
-            state.selected[d.uuid] = d;
+//            state.selected[d.uuid] = d;
         }
 
         dot.select('rect')
@@ -88,7 +93,79 @@ function updateImages(imgs, opt) {
             });
 
         updateInfo();
+    },
+    preloadCache() {
+        $('#imgcache').remove();
+        var el = $('<div id="imgcache"></div>');
+        $(document.body).append(el);
+        el.hide();
+        _.map(this.props.images, function (im) {
+            var imel = $('<img/>');
+            imel.attr('src', imghref(imgbasename(this.props.dataset, im),'s1'));
+            el.append(imel);
+        });
+    },
+    zoomed() {
+        var tr = d3.event.translate;
+        var scale = d3.event.scale;
+
+        //if(isNaN(tr[0])){
+        //    zoom.translate([0, 0]);
+        //    zoom.scale(1);
+        //    zoom.event(svg.transition().duration(500));
+        //}else{
+//        console.log(d3.event.translate,d3.event.scale);
+        container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
+        currentScale = d3.event.scale;
+        updateImageResolution(d3.event.scale);
+
+        //update axes
+        xAxisScale.domain(calculateAxisDomain(this.props.showOpt.mapX,tr,scale,'x'));
+        yAxisScale.domain(calculateAxisDomain(this.props.showOpt.mapY,tr,scale,'y'));
+        yAxisScale.domain();
+        xAxis.scale(xAxisScale);
+        yAxis.scale(yAxisScale);
+
+        function job(mode,el){
+            if(_.contains(['pos','frame','ch','slice'],mode)){
+                if(currentScale > 0.1){
+                    el.tickValues(null);
+//                el.tickValues(_.range(50));
+                }else{
+                    //               el.tickValues(_.range(0,200,10));
+                }
+            }else if(mode == 'time') {
+                el.tickValues(null);
+            }else if(mode == 'const') {
+                el.tickValues([0]);
+            }else{
+                el.tickValues(null);
+            }
+        }
+        job(this.props.showOpt.mapX,xAxis);
+        job(this.props.showOpt.mapY,yAxis);
+        xAxisObj.call(xAxis);
+        yAxisObj.call(yAxis);
+
+        //}
     }
+});
+
+
+
+
+function scaleTime(imgs,t){
+    var startTime = _.min(_.map(images,function(im){return im.time;}));
+//        console.log('scaleTime: ', (t-startTime)/1000);
+    return (t-startTime)/1000*state.show.timeScale;
+}
+
+
+// Update images in svg panel and info.
+function _updateImages(currentDataset,imgs, opt,click) {
+
+
+    console.log('updateImages()',imgs,opt);
 
     dot = d3.select('g.dot');
 
@@ -103,7 +180,7 @@ function updateImages(imgs, opt) {
     }
     imgs = _.map(_.sortBy(imgs,function(im){
 //            console.log(im,state.show.sortKey, im[state.show.sortKey]);
-        return im[state.show.sortKey];
+        return im[opt.sortKey];
     }),function(im){
         return im;
     });
@@ -126,7 +203,7 @@ function updateImages(imgs, opt) {
             //        console.log(d);
         }
         var xi = i % col;
-        var r = opt.tile ? (size * state.show.marginRatio * xi) :
+        var r = opt.tile ? (size * opt.marginRatio * xi) :
             (opt.mapmode_x == 'x' ? (-d.x) :
                 (opt.mapmode_x == 'y' ? (-d.y) :
                     (opt.mapmode_x == 'pos' ? d.pos * interval:
@@ -139,7 +216,7 @@ function updateImages(imgs, opt) {
     };
     var y = function (d, i) {
         var yi = Math.floor(i / col);
-        var r = opt.tile ? (size * state.show.marginRatio * yi) :
+        var r = opt.tile ? (size * opt.marginRatio * yi) :
             (opt.mapmode_y == 'x' ? (-d.x) :
                 (opt.mapmode_y == 'y' ? (-d.y) :
                     (opt.mapmode_y == 'pos' ? d.pos * interval:
@@ -188,9 +265,9 @@ function updateImages(imgs, opt) {
         .attr("y", y)
         .style({
             stroke: function (d) {
-                return state.selected[d.uuid] ? 'pink' : '#333';
+                return opt.selected[d.uuid] ? 'pink' : '#333';
             }, 'stroke-width': function (d) {
-                return state.selected[d.uuid] ? 2 : 1;
+                return opt.selected[d.uuid] ? 2 : 1;
             }
         });
 
@@ -210,7 +287,7 @@ function updateImages(imgs, opt) {
                     xs.push(parseFloat($(this).attr('x')));
                     ys.push(parseFloat($(this).attr('y')));
                 });
-                var targetscale = Math.min((axisPos.right-axisPos.left) / (_.max(xs) - _.min(xs) + size * state.show.marginRatio), (axisPos.bottom-axisPos.top) / (_.max(ys) - _.min(ys) + size * state.show.marginRatio)) * 0.9;
+                var targetscale = Math.min((axisPos.right-axisPos.left) / (_.max(xs) - _.min(xs) + size * opt.marginRatio), (axisPos.bottom-axisPos.top) / (_.max(ys) - _.min(ys) + size * opt.marginRatio)) * 0.9;
                 var tr_x = axisPos.left + 10 - targetscale * _.min(xs);
                 var tr_y = axisPos.top + 10 - targetscale * _.min(ys);
                 //              console.log(tr_x, tr_y);
@@ -232,50 +309,6 @@ function updateImages(imgs, opt) {
 var axisPos = {left: 60, right: 800, bottom: 550, top: 20};
 var axisW = axisPos.right-axisPos.left, axisH = axisPos.bottom - axisPos.top;
 
-function zoomed() {
-    var tr = d3.event.translate;
-    var scale = d3.event.scale;
-
-    //if(isNaN(tr[0])){
-    //    zoom.translate([0, 0]);
-    //    zoom.scale(1);
-    //    zoom.event(svg.transition().duration(500));
-    //}else{
-//        console.log(d3.event.translate,d3.event.scale);
-    container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-    currentScale = d3.event.scale;
-    updateImageResolution(d3.event.scale);
-
-    //update axes
-    xAxisScale.domain(calculateAxisDomain(state.show.mapmode_x,tr,scale,'x'));
-    yAxisScale.domain(calculateAxisDomain(state.show.mapmode_y,tr,scale,'y'));
-    yAxisScale.domain();
-    xAxis.scale(xAxisScale);
-    yAxis.scale(yAxisScale);
-
-    function job(mode,el){
-        if(_.contains(['pos','frame','ch','slice'],mode)){
-            if(currentScale > 0.1){
-                el.tickValues(null);
-//                el.tickValues(_.range(50));
-            }else{
-                //               el.tickValues(_.range(0,200,10));
-            }
-        }else if(mode == 'time') {
-            el.tickValues(null);
-        }else if(mode == 'const') {
-            el.tickValues([0]);
-        }else{
-            el.tickValues(null);
-        }
-    }
-    job(state.show.mapmode_x,xAxis);
-    job(state.show.mapmode_y,yAxis);
-    xAxisObj.call(xAxis);
-    yAxisObj.call(yAxis);
-
-    //}
-}
 
 function updateAxisLabels(){
     var m = {pos: 'Position', frame: 'Frame', ch: 'Channel', slice: 'Slice'};
