@@ -91,10 +91,6 @@
             margin: 20px 0px;
         }
 
-        .btn:focus, .btn:active {
-            outline: none !important;
-        }
-
         .btn-default:focus {
             background-color: inherit ! important;
         }
@@ -168,165 +164,18 @@
 
             </div>
             <div style="clear:both;"></div>
+
+            <div id="app"></div>
+            <div id="dim-select-btns"></div>
+
             <div>
-                <span>Select by</span>
-
-                <div class="btn-group" role="group" aria-label="...">
-                    <button type="button" class="btn btn-sm btn-default dim-select" data-value="pos" id="dim-pos">
-                        Position
-                    </button>
-                    <button type="button" class="btn btn-sm btn-default dim-select" data-value="frame" id="dim-frame">
-                        Frame
-                    </button>
-                    <button type="button" class="btn btn-sm btn-default dim-select" data-value="ch" id="dim-ch">
-                        Channel
-                    </button>
-                    <button type="button" class="btn btn-sm btn-default dim-select" data-value="slice" id="dim-slice">
-                        Slice
-                    </button>
-                </div>
-                <span style="margin-left: 30px">Preset</span>
-
-                <div class="btn-group" role="group" aria-label="...">
-                    <button type="button" class="btn btn-xs btn-default dim-preset" data-value="frame,pos"
-                            id="dim-posframe">Pos x Frame
-                    </button>
-                    <button type="button" class="btn btn-xs btn-default dim-preset" data-value="frame,ch"
-                            id="dim-framech">Frame x Ch
-                    </button>
-                    <button type="button" class="btn btn-xs btn-default dim-preset" data-value="pos,ch" id="dim-posch">
-                        Pos x Ch
-                    </button>
-                    <button type="button" class="btn btn-xs btn-default dim-preset" data-value="pos,slice"
-                            id="dim-posslice">Pos x Slice
-                    </button>
-                </div>
-            </div>
-            <div id="positionslider-wrap">
-                <span style="margin-right: 30px">Position</span>
-                <input id="position" data-slider-id='positionSlider'
-                       type="text" data-slider-min="0"
-                       data-slider-max="0" data-slider-step="1"
-                       data-slider-value="0"/>
-            </div>
-            <div id="frameslider-wrap">
-                <span style="margin-right: 30px">Frame</span>
-                <input id="frame" data-slider-id='frameSlider' type="text"
-                       data-slider-min="0" data-slider-max="0"
-                       data-slider-step="1" data-slider-value="0"/>
-            </div>
-            <div id="channelslider-wrap">
-                <span style="margin-right: 30px">Channel</span>
-                <input id="channel" data-slider-id='channelSlider'
-                       type="text" data-slider-min="0"
-                       data-slider-max="0" data-slider-step="1"
-                       data-slider-value="0"/>
-            </div>
-            <div id="sliceslider-wrap">
-                <span style="margin-right: 30px">Slice</span>
-                <input id="slice" data-slider-id='sliceSlider' type="text"
-                       data-slider-min="0" data-slider-max="0"
-                       data-slider-step="1" data-slider-value="0"/>
-            </div>
-            <div>
-                <pre id="selectinfo"></pre>
-            </div>
-            <div>
-                <div id="map-tools">
-                    <span>Mapping</span>
-
-                    <div class="btn-group" role="group" aria-label="...">
-                        <button type="button" class="btn btn-default btn-sm map-select active" data-value="pos"
-                                id="map-tile">Tile
-                        </button>
-                        <button type="button" class="btn btn-default btn-sm map-select" data-value="frame" id="map-2d">
-                            X/Y
-                        </button>
-                    </div>
-                    <div id="sort-tool" style="margin-left: 10px">
-                        <label for="tile-sort">Sort by</label>
-                        <select name="" id="tile-sort">
-                            <!-- Entries added by JS -->
-                        </select>
-                        <input type="checkbox" id="sort-reverse"/>
-                        <label for="sort-reverse">Reverse</label>
-                    </div>
-                    <div id="xy-tool" style="display:none;">
-                        <label for="xcoord">X</label>
-                        <select name="" id="xcoord">
-                            <option value="const">Constant</option>
-                            <option value="x" selected>Stage X</option>
-                            <option value="y">Stage Y</option>
-                            <option value="z">Stage Z</option>
-                            <option value="pos">Position index</option>
-                            <option value="frame">Frame index</option>
-                            <option value="ch">Channel index</option>
-                            <option value="slice">Slice index</option>
-                            <option value="time">Time</option>
-                        </select>
-                        <span id="switch-xy" style="cursor: pointer">&nbsp;&#8596;&nbsp;</span>
-                        <label for="ycoord">Y</label>
-                        <select name="" id="ycoord">
-                            <option value="const">Constant</option>
-                            <option value="x">Stage X</option>
-                            <option value="y" selected>Stage Y</option>
-                            <option value="z">Stage Z</option>
-                            <option value="pos">Position index</option>
-                            <option value="frame">Frame index</option>
-                            <option value="ch">Channel index</option>
-                            <option value="slice">Slice index</option>
-                            <option value="time">Time</option>
-                        </select>
-                        <span style="margin-left: 30px">Preset</span>
-
-                        <div class="btn-group" role="group" aria-label="...">
-                            <button type="button" class="btn btn-xs btn-default map-preset" data-value="x,y"
-                                    id="map-xy">Stage X/Y
-                            </button>
-                            <button type="button" class="btn btn-xs btn-default map-preset" data-value="frame,slice"
-                                    id="map-framech">Frame/Slice
-                            </button>
-                            <button type="button" class="btn btn-xs btn-default map-preset" data-value="time,pos"
-                                    id="map-timepos">Time/Pos
-                            </button>
-                            <button type="button" class="btn btn-xs btn-default map-preset" data-value="ch,pos"
-                                    id="map-chpos">Ch/Pos
-                            </button>
-                        </div>
-                    </div>
-
-                </div>
+                <div id="map-tools"></div>
                 <div style="clear:both;"></div>
-                <label for="colorpicker-bg">Background</label>
-                <input id='colorpicker-bg' class="color" value="#000">
-                <label for="colorpicker-fg">Foreground</label>
-                <input id='colorpicker-fg' class="color" value="#fff">
-                <label for="colorpicker-grid">Grid</label>
-                <input id='colorpicker-grid' class="color" value="#333">
-                <span style="margin-left: 30px">Preset</span>
-
-                <div class="btn-group" role="group" aria-label="...">
-                    <button type="button" class="btn btn-xs btn-default color-preset" data-value="000,fff,333">Dark
-                    </button>
-                    <button type="button" class="btn btn-xs btn-default color-preset" data-value="fff,000,ccc">Bright
-                    </button>
-                </div>
-
+                <div id="colorpickers"></div>
                 <button id="zoomAll" class="btn btn-default btn-sm">Zoom to show all</button>
             </div>
-            <!--<div id="pos-actual-div">-->
-            <!--<input id="pos-actual" type="checkbox" value=""/><label for="pos-actual">Map in actual coordinates</label>-->
-            <!--</div>-->
         </div>
         <div style="clear:both;"></div>
-        <!--
-        <div id="slopeslider-wrap">
-            <span style="margin-right: 30px">Slope</span><input id="slope" data-slider-id='slopeSlider' type="text" data-slider-min="0" data-slider-max="5" data-slider-step="0.1" data-slider-value="1"/>
-        </div>
-        <div id="interceptslider-wrap">
-            <span style="margin-right: 30px">Intercept</span><input id="intercept" data-slider-id='interceptSlider' type="text" data-slider-min="-1" data-slider-max="1" data-slider-step="0.01" data-slider-value="0"/>
-        </div>
-        -->
         <svg id="map">
             <defs>
                 <filter id="saturate">
@@ -339,21 +188,7 @@
             </defs>
 
         </svg>
-        <div class="col-md-12">
-            <table id="info" class="table">
-                <thead>
-                <tr>
-                    <th>UUID</th>
-                    <th>Path</th>
-                    <th>Time [sec]</th>
-                    <th>Pos</th>
-                    <th>Frame</th>
-                    <th>Channel</th>
-                    <th>Slice</th>
-                </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+        <div class="col-md-12" id="info">
         </div>
     </div>
 
@@ -361,12 +196,20 @@
 </div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.7.0/underscore-min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>
-<script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="bootstrap-slider.js"></script>
+
+<script src="http://d3js.org/d3.v3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/numeral.js/1.5.3/numeral.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.8.4/moment.min.js"></script>
 <script src="jscolor/jscolor.js"></script>
-<script src="main.js"></script>
+
+<script src="http://fb.me/react-with-addons-0.12.2.js"></script>
+<script src="http://fb.me/JSXTransformer-0.12.2.js"></script>
+
+<script src="imagepanel.js"></script>
+<script src="main.js" type="text/jsx"></script>
+
 </body>
 </html>
