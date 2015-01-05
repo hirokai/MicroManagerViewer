@@ -55,7 +55,7 @@ setupD3 = function() {
 
 
 function scaleTime(imgs,t){
-    startTime = _.min(_.map(images,function(im){return im.time;}));
+    var startTime = _.min(_.map(images,function(im){return im.time;}));
 //        console.log('scaleTime: ', (t-startTime)/1000);
     return (t-startTime)/1000*state.show.timeScale;
 }
@@ -63,6 +63,10 @@ function scaleTime(imgs,t){
 
 // Update images in svg panel and info.
 function updateImages(imgs, opt) {
+    function addKey() {
+        var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        return (isMac && d3.event.metaKey) || (!isMac && d3.event.shiftKey);
+    }
 
     function click(d) {
         if (!addKey()) {
@@ -294,7 +298,7 @@ function updateAxisLabels(){
     job(state.show.mapmode_y,yLabel);
 }
 
-calculateAxisDomain = function(mode,tr,scale,ax){
+function calculateAxisDomain(mode,tr,scale,ax){
     if(_.contains(['x','y','z'],mode)){
         if(ax == 'x'){
             return [(axisPos.left-tr[0])/scale,(axisPos.right-tr[0])/scale];
@@ -392,3 +396,18 @@ var timescale = function(imgs,t){
     var scale = 1/(max-min)*size*ts.length;
     return [(t-min)*scale,scale];
 };
+
+function updateImageResolution(scale){
+//    console.log('updateImageResolution(): ', d3.event.scale);
+    if(scale > 2.5){
+        var count = 0;
+        $('svg image').each(function(i,el){
+            var base = $(el).attr('data-basename');
+            var res = $(el).attr('data-res');
+            if(res == 's1'){
+                $(el).attr('href',imghref(base,'full'));
+                count += 1;
+            }
+        });
+    }
+}
