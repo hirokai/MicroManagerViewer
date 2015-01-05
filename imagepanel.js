@@ -60,7 +60,9 @@ function scaleTime(imgs,t){
     return (t-startTime)/1000*state.show.timeScale;
 }
 
-function updateImages(imgs, opt, keepZoom) {
+
+// Update images in svg panel and info.
+function updateImages(imgs, opt) {
 
     function click(d) {
         if (!addKey()) {
@@ -113,7 +115,7 @@ function updateImages(imgs, opt, keepZoom) {
     dot.exit().remove();
     var appended = dot.enter().append("g");
     var col = Math.round(Math.sqrt(imgs.length)*1.25);
-    var interval =  size*state.show.marginRatio;
+    var interval =  size*opt.marginRatio;
     var x = function (d, i) {
         if(isNaN(d.time)){
             //        console.error('d.time is NaN!');
@@ -195,7 +197,7 @@ function updateImages(imgs, opt, keepZoom) {
         .attr("x", x)
         .attr("y", y);
 
-    if (!keepZoom) {
+    if (!opt.keepZoom) {
         t.each('end', function () {
             var els = $('image');
             if (els.length > 0) {
@@ -216,8 +218,6 @@ function updateImages(imgs, opt, keepZoom) {
         });
     }
     updateImageResolution(currentScale);
-
-    div.setState({state: state});
 
     //$('image').on('load', function(){
     //    console.log($(this).parent('g').find('rect').css('fill','none'));

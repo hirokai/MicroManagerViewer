@@ -1,5 +1,271 @@
 /** @jsx React.DOM */
 
+var DataSetEntry = React.createClass({
+    render: function(){
+        var d = this.props.data;
+        var dims = ['positions','frames','channels','slices'];
+        var m2 = {positions: 'P', frames: 'T', channels: 'C', slices: 'Z'};
+        var s2 = _.compact(_.map(dims,function(a){return d[a] > 1 ? (m2[a] + d[a]) : null;})).join(' x ');
+        return <li role="presentation" data-uuid={d.uuid} className="dmenu">
+            <a href="#">{d.name} <p>({d.images} images: {s2})</p></a></li>;
+    }
+});
+
+var Tags = React.createClass({
+    render() {
+        return <div id='tags'>
+                {this.props.dims.pos > 1 ? <span className="label label-default">Positions</span> : ''}
+                {this.props.dims.frame > 1 ? <span className="label label-primary">Frames</span> : ''}
+                {this.props.dims.ch > 1 ? <span className="label label-warning">Channels</span> : ''}
+                {this.props.dims.slice > 1 ? <span className="label label-success">Slices</span> : ''}
+        </div>;
+    }
+});
+
+var FilterInfo = React.createClass({
+    getSelectInfo(imgs){
+        if(!imgs){
+            return 'Not valid images.';
+        }
+        var m = {pos: 'positions', frame: 'frames', ch: 'channels', slice: 'slices'};
+        var m2 = {pos: 'position', frame: 'frame', ch: 'channel', slice: 'slice'}
+
+        var ds = _.map(this.props.remainingDim,function(d){
+            return m[d];
+        });
+        var s = imgs.length > 1 ? (imgs.length+' images (multiple '+ds.join(', ')+')') : (imgs.length == 0 ? 'No image' : '1 image');
+        var s2 = _.compact(_.map(this.props.coord,function(v,k){
+            return v != null ? (m2[k] +'=' + v): null
+        })).join(', ');
+        var s3 = this.props.show.tile ? ('Tile, sorted by ' + this.props.show.sortKey) :
+            ('Mapping: x=' + this.props.show.mapX +', y='+this.props.show.mapY);
+        return 'Showing '+(s2 ? '' : 'all ')+s+(s2 ? (' of ' + s2) : '') + '. ' + s3;
+    },
+    render() {
+        var s = this.getSelectInfo(this.props.selectedImages);
+        return <div id='filterinfo'><pre>{s}</pre></div>;
+    }
+});
+
+
+var ImgPanel = React.createClass({
+    render() {
+        return <svg id="map"></svg>
+    },
+    componentDidMount() {
+        updateImages(this.props.images,this.props.showOpt);
+    }
+
+});
+
+var ImgInfo = React.createClass({
+    render() {
+        return
+    }
+});
+
+var RightPane = React.createClass({
+    getInitialState(){
+        return {images: [],
+            coord: {pos: null, frame: null, ch: null, slice: null}, selectedImages: []
+            , filterDims: {pos: false, frame: false, ch: false, slice: false}
+            , remainingDim: []
+            , show: {tile: true, mapX: 'x', mapY: 'y',sortKey: 'time'}
+        };
+    },
+    render() {
+        if(!this.props.dataset)
+            return <div className="col-md-9">Select dataset</div>;
+        else
+            return <div className="col-md-9">
+                <div id="tools">
+                    <Tags dims={this.props.dataset.dims}/>
+                    <div style={{clear: 'both'}}></div>
+                    <DimFilters dims={this.props.dataset.dims} onChangeFilterDims={this.filterDimChanged}
+                        onChangeCoord={this.coordChanged}
+                        frameChanged={this.frameChanged}
+                        chChanged={this.chChanged}
+                        sliceChanged={this.sliceChanged}
+                    />
+                    <FilterInfo selectedImages={this.state.selectedImages} coord={this.state.coord} show={this.state.show} remainingDim={this.state.remainingDim}/>
+                    <div>
+                        <MapTools remainingDim={this.state.remainingDim} dims={this.state.dims}/>
+                        <div style={{clear: 'both'}}></div>
+                        <Pickers/>
+                        <button id="zoomAll" className="btn btn-default btn-sm">Zoom to show all</button>
+                    </div>
+                </div>
+                <div style={{clear: 'both'}}></div>
+                <ImgPanel images={this.state.selectedImages} showOpt={this.state.show}/>
+                <ImgInfo/>
+            </div>;
+    },
+    coordChanged(v) {
+            console.log('coord changed',v);
+            var o = {pos: this.state.coord.pos, frame: this.state.coord.frame, ch: this.state.coord.ch, slice: this.state.coord.slice};
+            o[v.key] = v.value;
+        console.log(o);
+            this.setState({coord: o});
+        },
+        frameChanged(v) {
+            this.state.coord[this.props.dim] = v;
+
+            this.state.selectedImages = selectImages(images);
+            updateImages(this.state.selectedImages, this.state.showOpt, true);
+
+
+            //var mintime = new Date('1970-01-01');
+            //var maxtime = new Date('2100-01-01');
+            var maxtime = 0;
+            var mintime = 1000 * 60 * 60 * 24 * 365 * 20;  //  20 years
+            _.map(state.selectedImages, function (im) {
+                mintime = Math.min(im.time, mintime);
+                maxtime = Math.max(im.time, maxtime);
+            });
+            $('#time').html('' + numeral(mintime / 1000).format('0.0') + ' - ' + numeral(maxtime / 1000).format('0.0') + ' msec.');
+//        $('#selectinfo').html(getSelectInfo(imgs));
+
+            this.setState({state: state});
+        },
+        chChanged() {
+            console.log('ch changed');
+        },
+        sliceChanged() {
+            console.log('slice changed');
+    },
+    filterDimChanged(dims){
+        this.setState({filterDims: dims});
+    },
+
+    selectImages(images) {
+        var res = _.filter(images, function (img) {
+            return (this.state.coord.pos == null || (img.meta_pos || img.pos) == this.state.coord.pos)
+                && (this.state.coord.ch == null || (img.meta_ch || img.ch) == this.state.coord.ch)
+                && (this.state.coord.frame == null || (img.meta_frame || img.frame) == this.state.coord.frame)
+                && (this.state.coord.slice == null || (img.meta_slice || img.slice) == this.state.coord.slice);
+        });
+        var rem = [];
+        _.map(['pos','frame','ch','slice'],function(k){
+            if(this.props.dims[k] > 1 && !this.state.filterDims[k]) rem.push(k);
+        });
+        this.setState({remainingDim: rem, selectedImages: res});
+    },
+    componentDidMount() {
+        var s = this.props.dataset;
+        if(!s)return;
+        d3.csv("metadata/" + s.uuid + ".csv", d => {
+            d.x = +d.x;
+            d.y = +d.y;
+            d.pos = +d.meta_pos || +d.pos;
+            d.frame = +d.meta_frame || +d.frame;
+            d.ch = +d.meta_ch || +d.ch;
+            d.slice = +d.meta_slice || +d.slice;
+            d.meta_pos = +d.meta_pos;
+            d.meta_frame = +d.meta_frame;
+            d.meta_ch = +d.meta_ch;
+            d.meta_slice = +d.meta_slice;
+            d.time = moment(d.stime, 'YYYY-MM-DD HHmm:ss Z').valueOf() + parseInt(d.time);
+            if(isNaN(d.time)){
+                //console.error('d.time is NaN!');
+                //console.log(d);
+            }
+            return d;
+        }, (error, imgs) => {
+            console.log(imgs);
+            self.setState({images: imgs});
+
+            var ts = _.map(imgs,function(im){return im.time;});
+            startTime = _.min(ts);
+
+            state.dims.pos = s.meta_pos || s.positions;
+            state.dims.frame = s.meta_frame || s.frames;
+            state.dims.ch = s.meta_ch || s.channels;
+            state.dims.slice = s.meta_slice || s.slices;
+
+            var biggestDim = _.sortBy(Object.keys(state.dims),function(k){return 0-state.dims[k]})[0];
+            state.coord[biggestDim] = 0;
+            state.filterDims.pos = false;
+            state.filterDims.frame = false;
+            state.filterDims.ch = false;
+            state.filterDims.slice = false;
+            state.filterDims[biggestDim] = true;
+
+            updateToolbar();
+            imgs = this.selectImages(imgs);
+            updateImages(imgs, this.state.tile, this.state.mapX, this.state.mapY);
+
+            if (state.show.preloadCache) {
+                $('#imgcache').remove();
+                var el = $('<div id="imgcache"></div>');
+                $(document.body).append(el);
+                el.hide();
+                _.map(images, function (im) {
+                    var imel = $('<img/>');
+                    imel.attr('src', imghref(imgbasename(currentDataset, im),'s1'));
+                    el.append(imel);
+                });
+            }
+        });
+    }
+});
+
+var App = React.createClass({
+    getInitialState: function(){
+        return {datasets: {}, currentDataset: null, dims: {}};
+    },
+    render: function(){
+        return <div>
+            <div className="col-md-3">
+                <p>Choose dataset</p>
+                <ul id='data-menu' className="nav nav-pills nav-stacked">
+                    {_.map(this.state.datasets,function(d,k){
+                        return <DataSetEntry data={d} data-uuid={k}/>;
+                    })}
+                </ul>
+            </div>
+            <RightPane dataset={this.state.currentDataset}/>
+        </div>;
+    },
+    filterDimChanged: function(d){
+        console.log(d);
+    },
+    componentDidMount: function(){
+        var self = this;
+        d3.csv('datasets.csv', function (d) {
+            d.metaset = (+d.metaset != 0);
+            d.positions = +d.positions;
+            d.frames = +d.frames;
+            d.channels = +d.channels;
+            d.slices = +d.slices;
+            d.meta_pos = +d.meta_pos;
+            d.meta_frame = +d.met_frame;
+            d.meta_ch = +d.meta_ch;
+            d.meta_slice = +d.meta_slice;
+            d.dims = {};
+            d.dims.pos = d.meta_pos || d.positions;
+            d.dims.frame = d.meta_frame || d.frames;
+            d.dims.ch = d.meta_ch || d.channels;
+            d.dims.slice = d.meta_slice || d.slices;
+            return d;
+        }, function (err, dat) {
+            ds = {};
+            _.map(dat, function (d) {
+                ds[d.uuid] = d;
+            });
+            self.setState({datasets: ds});
+            console.log(ds);
+            $('.dmenu').click(function (ev) {
+                var target = $(ev.target);
+                var el = target.tagName == 'li' ? target : target.parents('li');
+                el.parents('ul').children('li').removeClass('active');
+                el.addClass('active');
+                self.setState({currentDataset: self.state.datasets[el.attr('data-uuid')]});
+            });
+            $($('.dmenu > a')[0]).click();
+        });
+    }
+
+});
 
 function addKey() {
     var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -21,25 +287,10 @@ function pad(num, size) {
     return s.substr(s.length - size);
 }
 
-function getSelectInfo(imgs){
-    var m = {pos: 'positions', frame: 'frames', ch: 'channels', slice: 'slices'};
-    var m2 = {pos: 'position', frame: 'frame', ch: 'channel', slice: 'slice'}
 
-    var ds = _.map(state.remainingDim,function(d){
-        return m[d];
-    });
-    var s = imgs.length > 1 ? (imgs.length+' images (multiple '+ds.join(', ')+')') : (imgs.length == 0 ? 'No image' : '1 image');
-    var s2 = _.compact(_.map(state.coord,function(v,k){
-        return v != null ? (m2[k] +'=' + v): null
-    })).join(', ');
-    var s3 = state.show.tile ? ('Tile, sorted by ' + state.show.sortKey) :
-        ('Mapping: x=' + state.show.mapmode_x +', y='+state.show.mapmode_y);
-    return 'Showing '+(s2 ? '' : 'all ')+s+(s2 ? (' of ' + s2) : '') + '. ' + s3;
-}
-
-var InfoTable = React.createClass({
+var ImgInfo = React.createClass({
     render: function(){
-        var rows = _.map(state.selected,function(im){
+        var rows = _.map(this.props.selectedImages,function(im){
             var sec = (im.time-startTime)/1000;
             return <tr key={im.uuid}>
                 <td>{im.uuid}</td>
@@ -51,7 +302,8 @@ var InfoTable = React.createClass({
                 <td>{im.slice}</td>
             </tr>;
         });
-        return <table id="info" className="table">
+        return <div className="col-md-12" id="info">
+            <table id="info" className="table">
             <thead>
                 <tr>
                     <th>UUID</th>
@@ -64,29 +316,30 @@ var InfoTable = React.createClass({
                 </tr>
             </thead>
             <tbody>{rows}</tbody>
-        </table>;
+        </table>
+        </div>;
     }
 });
 
 var Pickers = React.createClass({
     render: function(){
         return <div><label htmlFor="colorpicker-bg">Background</label>
-            <input id='colorpicker-bg' className="color" value="#000"/>
+            <input id='colorpicker-bg' className="color" defaultValue="#000"/>
             <label htmlFor="colorpicker-fg">Foreground</label>
-            <input id='colorpicker-fg' className="color" value="#fff"/>
+            <input id='colorpicker-fg' className="color" defaultValue="#fff"/>
             <label htmlFor="colorpicker-grid">Grid</label>
-            <input id='colorpicker-grid' className="color" value="#333"/>
+            <input id='colorpicker-grid' className="color" defaultValue="#333"/>
             <span style={{marginLeft: '30px'}}>Preset</span>
 
             <div className="btn-group" role="group" aria-label="...">
-                <button type="button" className="btn btn-xs btn-default color-preset" onClick={this.presetDark} data-value="000,fff,333">Dark
+                <button type="button" className="btn btn-xs btn-default color-preset" onClick={this.presetColor} data-value="000,fff,333">Dark
                 </button>
-                <button type="button" className="btn btn-xs btn-default color-preset" onClick={this.presetDark} data-value="fff,000,ccc">Bright
+                <button type="button" className="btn btn-xs btn-default color-preset" onClick={this.presetColor} data-value="fff,000,ccc">Bright
                 </button>
             </div>
         </div>
     },
-    presetDark: function(ev){
+    presetColor: function(ev){
         var el = $(ev.nativeEvent.target);
         var cs = el.attr('data-value').split(',');
         $('#colorpicker-bg').val(cs[0]).trigger('change');
@@ -116,24 +369,14 @@ var Pickers = React.createClass({
 
 });
 
-var state = {
-    dims: {pos: 3, frame: 10, ch: 1, slice: 1}
-    , filterDims: {pos: false, frame: true, ch: false, slice: false}
-    , remainingDim: []
-    , coord: {pos: 1, frame: 2, ch: 0, slice: 0}
-    , selected: {}
-    , selectedImages: []
-    , show: {tile: true, sortKey: 'time', sortReverse: false, preloadCache: true, mapmode_x: 'x', mapmode_y: 'y', marginRatio: 1.1, timeScale: 10}
-};
-
 var fullname = {pos: 'Position', frame: 'Frame', ch: 'Channel', slice: 'Slice'};
 
 var Slider = React.createClass({
     propTypes: {
-        dim: React.PropTypes.string.isRequired
+        dim: React.PropTypes.string.isRequired,
     },
     getInitialState: function(){
-        return {slider: null};
+        return {slider: null, value: 0};
     },
     render: function(){
         var dim = this.props.dim;
@@ -141,57 +384,37 @@ var Slider = React.createClass({
             <span style={{'marginRight': '30px'}}>{fullname[dim]}</span>
             <input id={dim +'-slider-input'} data-slider-id={dim + '-slider'}
                 type="text" data-slider-min="0"
-                data-slider-max={state.dims[dim]} data-slider-step="1"
-                data-slider-value={state.coord[dim]}/>
+                data-slider-max={this.props.max} data-slider-step="1"
+                data-slider-value={this.state.value}/>
         </div>;
     },
     componentDidMount: function(){
-        this.state.slider = $('#'+this.props.dim+'-slider-input').slider()
+        var sl = $('#'+this.props.dim+'-slider-input').slider()
             .on('change', this.changed)
             .data('slider');
-        this.state.slider.setValue(state.coord[this.props.dim])
+        this.setState({slider: sl});
+        sl.setValue(0)
     },
     changed: function(){
-        state.coord[this.props.dim] = this.state.slider.getValue();
-
-        state.selectedImages = selectImages(images);
-
-        state.selected = {};
-        updateImages(state.selectedImages, state.show, true);
-
-        if(this.props.dim == 'frame'){
-
-            //var mintime = new Date('1970-01-01');
-            //var maxtime = new Date('2100-01-01');
-            var maxtime = 0;
-            var mintime = 1000 * 60 * 60 * 24 * 365 * 20;  //  20 years
-            _.map(state.selectedImages, function (im) {
-                mintime = Math.min(im.time, mintime);
-                maxtime = Math.max(im.time, maxtime);
-            });
-            $('#time').html('' + numeral(mintime / 1000).format('0.0') + ' - ' + numeral(maxtime / 1000).format('0.0') + ' msec.');
-//        $('#selectinfo').html(getSelectInfo(imgs));
-
-        }
-        this.setState({state: state});
+        this.props.onChange({key: this.props.dim, value: this.state.slider.getValue()});
     },
     componentWillUnmount: function(){
         if(this.state.slider) this.state.slider.destroy();
     }
 });
 
-var Div = React.createClass({
+var DimFilters = React.createClass({
     getInitialState: function() {
-        return state;
+        return {filterDims: {pos: false, frame: false, ch: false, slice: false}};
     },
     toggleDim: function (ev) {
         var el = $(ev.nativeEvent.target);
         var dim = el.attr('data-value');
         console.log('clicked!',dim, this.state.filterDims);
-        this.state.filterDims[dim] = !this.state.filterDims[dim];
-        console.log(this.state.filterDims);
-//        selectDim(this.state.filterDims);
-        this.setState({state: state});
+        var ds = _.extend({},this.state.filterDims);
+        ds[dim] = !ds[dim];
+        this.setState({filterDims: ds});
+        this.props.onChangeFilterDims(this.state.filterDims)
     },
     dimPreset: function (dim) {
         //      renderReact();
@@ -207,70 +430,63 @@ var Div = React.createClass({
         return <button onClick={clicked} className={classes} key={title} data-value={val} disabled={!enabled ? 'disabled' : ''}>{title}</button>
     },
     componentDidMount: function(){
+
     },
     render: function () {
-        return <div>
-            <div id='tags'>
-                {this.state.dims.pos > 1 ? <span className="label label-default">Positions</span> : ''}
-                {this.state.dims.frame > 1 ? <span className="label label-primary">Frames</span> : ''}
-                {this.state.dims.ch > 1 ? <span className="label label-warning">Channels</span> : ''}
-                {this.state.dims.slice > 1 ? <span className="label label-success">Slices</span> : ''}
-            </div>
-
+        return <div id='dim-select-btns'>
             <div>
                 <div className="btn-group" role="group" aria-label="...">
-                {this.btn('Position', 'pos', this.toggleDim, this.state.dims.pos > 1, this.state.filterDims.pos)}
-                {this.btn('Frame', 'frame', this.toggleDim, this.state.dims.frame > 1, this.state.filterDims.frame)}
-                {this.btn('Channel', 'ch', this.toggleDim, this.state.dims.ch > 1, this.state.filterDims.ch)}
-                {this.btn('Slice', 'slice', this.toggleDim, this.state.dims.slice > 1, this.state.filterDims.slice)}
+                {this.btn('Position', 'pos', this.toggleDim, this.props.dims.pos > 1, this.state.filterDims.pos)}
+                {this.btn('Frame', 'frame', this.toggleDim, this.props.dims.frame > 1, this.state.filterDims.frame)}
+                {this.btn('Channel', 'ch', this.toggleDim, this.props.dims.ch > 1, this.state.filterDims.ch)}
+                {this.btn('Slice', 'slice', this.toggleDim, this.props.dims.slice > 1, this.state.filterDims.slice)}
                 </div>
                 <span style={{'marginLeft': '30px'}}>Preset</span>
                 <div className="btn-group" role="group" aria-label="...">
-                {this.btnp('Pos x Frame', 'pos,frame', this.dimPreset, this.state.dims.pos > 1 && this.state.dims.frame > 1)}
-                {this.btnp('Frame x Ch', 'frame,ch', this.dimPreset, this.state.dims.frame > 1 && this.state.dims.ch > 1)}
-                {this.btnp('Pos x Ch', 'pos,ch', this.dimPreset, this.state.dims.pos > 1 && this.state.dims.ch > 1)}
-                {this.btnp('Pos x Slice', 'pos,slice', this.dimPreset, this.state.dims.pos > 1 && this.state.dims.slice > 1)}
+                {this.btnp('Pos x Frame', 'pos,frame', this.dimPreset, this.props.dims.pos > 1 && this.props.dims.frame > 1)}
+                {this.btnp('Frame x Ch', 'frame,ch', this.dimPreset, this.props.dims.frame > 1 && this.props.dims.ch > 1)}
+                {this.btnp('Pos x Ch', 'pos,ch', this.dimPreset, this.props.dims.pos > 1 && this.props.dims.ch > 1)}
+                {this.btnp('Pos x Slice', 'pos,slice', this.dimPreset, this.props.dims.pos > 1 && this.props.dims.slice > 1)}
                 </div>
             </div>
 
-            {this.state.filterDims.pos ? <Slider dim='pos'/> : ''}
-            {this.state.filterDims.frame ? <Slider dim='frame'/> : ''}
-            {this.state.filterDims.ch ? <Slider dim='ch'/> : ''}
-            {this.state.filterDims.slice ? <Slider dim='slice'/> : ''}
-
-            <div>
-                <pre id="selectinfo">{getSelectInfo(state.selectedImages)}</pre>
-            </div>
+            {this.state.filterDims.pos ? <Slider dim='pos' max={this.props.dims.pos} onChange={this.onChangeCoord}/> : ''}
+            {this.state.filterDims.frame ? <Slider dim='frame' max={this.props.dims.frame} onChange={this.props.onChangeCoord}/> : ''}
+            {this.state.filterDims.ch ? <Slider dim='ch' max={this.props.dims.ch} onChange={this.props.onChangeCoord}/> : ''}
+            {this.state.filterDims.slice ? <Slider dim='slice' max={this.props.dims.slice} onChange={this.props.onChangeCoord}/> : ''}
         </div>;
+    },
+    onChangeCoord(ev){
+        this.props.onChangeCoord(ev);
     }
 });
 
 var MapTools = React.createClass({
     getInitialState: function(){
-        return {state: state};
+        return {};
     },
     render: function(){
 
         var tile_sort = [];
-        if(_.contains(this.state.remainingDim, 'pos') && this.state.dims.pos > 1)
+        if(_.contains(this.props.remainingDim, 'pos') && this.props.dims.pos > 1)
             sortsel.push(<option value="pos" key='0'>Position index</option>);
-        if(_.contains(this.state.remainingDim, 'frame') && this.state.dims.frame > 1)
+        if(_.contains(this.props.remainingDim, 'frame') && this.props.dims.frame > 1)
             sortsel.push(<option value="frame" key='1'>Frame index</option>);
-        if(_.contains(this.state.remainingDim, 'ch') && this.state.dims.ch > 1)
+        if(_.contains(this.props.remainingDim, 'ch') && this.props.dims.ch > 1)
             sortsel.push(<option value="ch" key='2'>Channel index</option>);
-        if(_.contains(this.state.remainingDim, 'slice') && this.state.dims.slice > 1)
+        if(_.contains(this.props.remainingDim, 'slice') && this.props.dims.slice > 1)
             sortsel.push(<option value="slice" key='3'>Slice index</option>);
         tile_sort.push(<option value="time" key='4'>Time</option>);
 
-        return <div><span>Mapping</span>
+        return <div id='map-tools'><span>Mapping</span>
             <div className="btn-group" role="group" aria-label="...">
-        <button type="button" className="btn btn-default btn-sm map-select active" data-value="pos"
-            id="map-tile">Tile
-        </button>
-        <button type="button" className="btn btn-default btn-sm map-select" data-value="frame" id="map-2d">
-        X/Y
-        </button>
-        </div>
+                <button type="button" className="btn btn-default btn-sm map-select active" data-value="pos"
+                    id="map-tile">Tile
+                </button>
+                <button type="button" className="btn btn-default btn-sm map-select" data-value="frame" id="map-2d">
+                    X/Y
+                </button>
+            </div>
             <div id="sort-tool" style={{marginLeft: '10px'}}>
                 <label htmlFor="tile-sort">Sort by</label>
                 <select name="" id="tile-sort">
@@ -333,8 +549,8 @@ var dataset = {};
 
 
 function updateToolbar() {
-    div.setState({state: state});
-    updateMappingTool();
+    // div.setState({state: state});
+    // updateMappingTool();
 }
 
 function imghref(base, res) {
@@ -371,65 +587,13 @@ var currentDataset = null;
 var startTime = null;
 
 
-function selectImages(images) {
-    var res = _.filter(images, function (img) {
-        return (state.coord.pos == null || (img.meta_pos || img.pos) == state.coord.pos)
-            && (state.coord.ch == null || (img.meta_ch || img.ch) == state.coord.ch)
-            && (state.coord.frame == null || (img.meta_frame || img.frame) == state.coord.frame)
-            && (state.coord.slice == null || (img.meta_slice || img.slice) == state.coord.slice);
-    });
-    state.remainingDim = [];
-    _.map(['pos','frame','ch','slice'],function(k){
-        if(state.dims[k] > 1 && !state.filterDims[k]) state.remainingDim.push(k);
-    });
-    div.setState({state: state});
-    return res;
-}
-
-var div, info, pickers;
-
 $(function () {
     setupD3();
+    React.render(<App/>, document.getElementById("app"));
+});
 
-    div = React.render(<Div/>, document.getElementById("dim-select-btns"));
-    info = React.render(<InfoTable/>, document.getElementById("info"));
-    pickers = React.render(<Pickers/>, document.getElementById("colorpickers"));
-    maptools = React.render(<MapTools/>, document.getElementById("map-tools"));
 
-    d3.csv('datasets.csv', function (d) {
-        d.metaset = (+d.metaset != 0);
-        d.positions = +d.positions;
-        d.frames = +d.frames;
-        d.channels = +d.channels;
-        d.slices = +d.slices;
-        d.meta_pos = +d.meta_pos;
-        d.meta_frame = +d.met_frame;
-        d.meta_ch = +d.meta_ch;
-        d.meta_slice = +d.meta_slice;
-        return d;
-    }, function (err, dat) {
-        dataset = {};
-//        console.log(dat);
-        _.map(dat, function (d) {
-            dataset[d.uuid] = d;
-            var m = $('#data-menu');
-            var dims = ['positions','frames','channels','slices'];
-            var m2 = {positions: 'P', frames: 'T', channels: 'C', slices: 'Z'};
-            var s2 = _.compact(_.map(dims,function(a){return d[a] > 1 ? (m2[a] + d[a]) : null;})).join(' x ');
-            var str = d.name + ' <p>(' + d.images + ' images: '+s2+')</p>';
-            m.append('<li role="presentation" data-uuid="' + d.uuid + '" class="dmenu"><a href="#">' + str + '</a></li>');
-
-        });
-        $('.dmenu').click(function (ev) {
-            var target = $(ev.target);
-            var el = target.tagName == 'li' ? target : target.parents('li');
-            el.parents('ul').children('li').removeClass('active');
-            el.addClass('active');
-            datasetChanged(dataset[el.attr('data-uuid')]);
-        });
-        $($('.dmenu > a')[0]).click();
-    });
-
+function setEvents(){
     $('#zoomAll').click(function () {
         var xs = [], ys = [];
         $('image').each(function () {
@@ -519,70 +683,10 @@ $(function () {
         $('#xcoord').trigger('change');
         $('#ycoord').trigger('change');
     });
-});
+}
 
 
 function datasetChanged(s) {
 
-    d3.csv("metadata/" + s.uuid + ".csv", imgcsv_read, function (error, imgs) {
-        currentDataset = s.uuid;
-        state.selected = {};
-        images = imgs;
-        $('#tags').html('');
-        $('.dim-select').removeClass('active');
-
-        state.coord = {pos: null, frame: null, ch: null, slice: null};
-
-        var ts = _.map(images,function(im){return im.time;});
-        startTime = _.min(ts);
-
-        state.dims.pos = s.meta_pos || s.positions;
-        state.dims.frame = s.meta_frame || s.frames;
-        state.dims.ch = s.meta_ch || s.channels;
-        state.dims.slice = s.meta_slice || s.slices;
-
-        var biggestDim = _.sortBy(Object.keys(state.dims),function(k){return 0-state.dims[k]})[0];
-        state.coord[biggestDim] = 0;
-        state.filterDims.pos = false;
-        state.filterDims.frame = false;
-        state.filterDims.ch = false;
-        state.filterDims.slice = false;
-        state.filterDims[biggestDim] = true;
-
-        updateToolbar();
-        imgs = selectImages(images);
-        updateImages(imgs, state.show);
-
-        if (state.show.preloadCache) {
-            $('#imgcache').remove();
-            var el = $('<div id="imgcache"></div>');
-            $(document.body).append(el);
-            el.hide();
-            _.map(images, function (im) {
-                var imel = $('<img/>');
-                imel.attr('src', imghref(imgbasename(currentDataset, im),'s1'));
-                el.append(imel);
-            });
-        }
-        $('#map-tile').click();
-    });
 }
 
-function imgcsv_read(d) {
-    d.x = +d.x;
-    d.y = +d.y;
-    d.pos = +d.meta_pos || +d.pos;
-    d.frame = +d.meta_frame || +d.frame;
-    d.ch = +d.meta_ch || +d.ch;
-    d.slice = +d.meta_slice || +d.slice;
-    d.meta_pos = +d.meta_pos;
-    d.meta_frame = +d.meta_frame;
-    d.meta_ch = +d.meta_ch;
-    d.meta_slice = +d.meta_slice;
-    d.time = moment(d.stime, 'YYYY-MM-DD HHmm:ss Z').valueOf() + parseInt(d.time);
-    if(isNaN(d.time)){
-        //console.error('d.time is NaN!');
-        //console.log(d);
-    }
-    return d;
-}
