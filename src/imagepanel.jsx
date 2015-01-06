@@ -29,7 +29,22 @@ var ImgPanel = React.createClass({
     //    return {scale: 1};
     //},
     render() {
-        return <svg id="map"></svg>;
+        return <div id="imagePanel">
+                <div id='img-tool'>
+                    <ColorPickers/>
+                    <button style={{float: 'right'}} id="zoomAll" className="btn btn-default btn-sm" onClick={this.zoomAllClicked}>Zoom to show all</button>
+                    <span style={{float: 'right'}}>Mouse wheel to zoom, drag to pan.</span>
+                </div>
+                <svg id="map"></svg>
+            </div>
+            ;
+    },
+    zoomAllClicked(){
+        var r = calculateOptimalZoom();
+
+        zoom.translate([r[0], r[1]]);
+        zoom.scale(r[2]);
+        zoom.event(svg.transition().duration(500));
     },
     componentDidMount() {
         this.setupD3();
@@ -37,7 +52,8 @@ var ImgPanel = React.createClass({
         this.updateImages(this.props.images,this.props.showOpt,true);
     },
     isImageMappingChanged(prevProps){
-        return (prevProps.showOpt.mapX != this.props.showOpt.mapX)
+        return (prevProps.showOpt.tile != this.props.showOpt.tile)
+            || (prevProps.showOpt.mapX != this.props.showOpt.mapX)
             || (prevProps.showOpt.mapY != this.props.showOpt.mapY)
             || !_.isEqual(prevProps.filterDims, this.props.filterDims);
     },
@@ -431,7 +447,7 @@ var axisW = axisPos.right-axisPos.left, axisH = axisPos.bottom - axisPos.top;
 var timeScale = 1;
 
 function calculateAxisDomain(mode,tr,scale,ax,marginRatio){
-    console.log(mode,tr,scale,ax,marginRatio);
+    //console.log(mode,tr,scale,ax,marginRatio);
 
     if(_.contains(['x','y','z'],mode)){
         if(ax == 'x'){

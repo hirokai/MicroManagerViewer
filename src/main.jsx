@@ -110,10 +110,6 @@ var RightPane = React.createClass({
                             onChangeSortReverse={this.onChangeSortReverse}
                         />
                         <div style={{clear: 'both'}}></div>
-                        <button id="zoomAll" className="btn btn-default btn-sm" onClick={this.zoomAllClicked}>Zoom to show all</button>
-                        <span>Mouse wheel to zoom, drag to pan.</span>
-                        <ColorPickers/>
-
                     </div>
                 </div>
                 <div style={{clear: 'both'}}></div>
@@ -170,13 +166,6 @@ var RightPane = React.createClass({
         });
         console.log('filterDimChanged',filterDims,newCoord);
         this.setState({filterDims: filterDims, remainingDim: this.calcRemainingDim(), coord: newCoord, selectedImages: this.selectImages(this.state.images, filterDims, newCoord)});
-    },
-    zoomAllClicked(){
-        var r = calculateOptimalZoom();
-
-        zoom.translate([r[0], r[1]]);
-        zoom.scale(r[2]);
-        zoom.event(svg.transition().duration(500));
     },
     onChangeSelected(cmd,dat) {
         console.log(cmd,dat);
@@ -455,8 +444,8 @@ var MapTools = React.createClass({
         return {};
     },
     render: function(){
-        return <div id='map-tools'><span>Mapping</span>
-            <div className="btn-group" role="group" aria-label="...">
+        return <div id='map-tools'><span style={{'margin': '0px 10px 10px 20px'}}>Mapping</span>
+            <div className="btn-group" role="group" aria-label="..."  style={{marginRight: '10px'}}>
                 <button type="button" className={"btn btn-default btn-sm map-select" + (this.props.show.tile ? ' active': '')}
                     id="map-tile" onClick={this.onClickMapMode}>
                     Tile
@@ -470,7 +459,7 @@ var MapTools = React.createClass({
         </div>
     },
     sortTool: function(){
-        return <div id="sort-tool" style={{marginLeft: '10px'}}>
+        return <div id="sort-tool">
             <label htmlFor="tile-sort">Sort by</label>
             <select name="" id="tile-sort" onChange={this.onChangeSort}>
                     {this.sortOptions()}
