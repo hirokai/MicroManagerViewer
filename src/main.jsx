@@ -138,13 +138,13 @@ var RightPane = React.createClass({
     },
     coordChanged(v) {
         var self = this;
-        var o = {pos: this.state.coord.pos, frame: this.state.coord.frame, ch: this.state.coord.ch, slice: this.state.coord.slice};
-        o[v.key] = v.value;
+        var newCoord = _.extend({},this.state.coord);
+        newCoord[v.key] = v.value;
         var rem = [];
         _.map(['pos','frame','ch','slice'],function(k){
             if(self.state.dims[k] > 1 && !self.state.filterDims[k]) rem.push(k);
         });
-        this.setState({coord: o, selectedImages: this.selectImages(this.state.images, this.state.filterDims, o), remainingDim: rem});
+        this.setState({coord: newCoord, selectedImages: this.selectImages(this.state.images, this.state.filterDims, newCoord), remainingDim: rem});
     },
     filterDimChanged(filterDims){
         var ov = this.state.filterDims;
@@ -154,7 +154,7 @@ var RightPane = React.createClass({
             newCoord[d] = filterDims[d] ? (ov[d] ? currentCoord[d] : 0): null;
         });
         console.log('filterDimChanged',filterDims,newCoord);
-        this.setState({filterDims: filterDims, coord: newCoord});
+        this.setState({filterDims: filterDims, coord: newCoord, selectedImages: this.selectImages(this.state.images, filterDims, newCoord)});
     },
     zoomAllClicked(){
         var r = calculateOptimalZoom();
@@ -180,7 +180,7 @@ var RightPane = React.createClass({
     componentDidUpdate(prevProps) {
         var s = this.props.dataset;
         console.log(prevProps,this.props);
-//        if(s && s != prevProps.dataset)
+        if(s && s != prevProps.dataset)
             this.datasetChanged();
     },
     datasetChanged() {

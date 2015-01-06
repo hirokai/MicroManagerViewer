@@ -29,11 +29,11 @@ var ImgPanel = React.createClass({
     //    return {scale: 1};
     //},
     render() {
-        return <svg id="map"></svg>
+        return <svg id="map"></svg>;
     },
     componentDidMount() {
         this.setupD3();
-        console.log('componentDidMount!',this.props,prevProps,resetZoom);
+        console.log('componentDidMount!',this.props);
         this.updateImages(this.props.images,this.props.showOpt,true);
     },
     isImageMappingChanged(prevProps){
@@ -45,6 +45,9 @@ var ImgPanel = React.createClass({
         var resetZoom = this.isImageMappingChanged(prevProps);
         console.log('componentDidUpdate',this.props,prevProps,resetZoom);
         this.updateImages(this.props.images, this.props.showOpt, resetZoom);
+        if(this.props.dataset.uuid != prevProps.dataset.uuid){
+            this.setupD3();
+        }
         if (this.props.preloadCache) {
             this.preloadCache();
         }
@@ -67,6 +70,7 @@ var ImgPanel = React.createClass({
             .scaleExtent([0.02, 10])
             .on("zoom", this.zoomed);
 
+        d3.select("#map").html("");
         svg = d3.select("#map")
             .style("width", '' + (this.width + this.margin.left + this.margin.right) + 'px')
             .style("height", '' + (this.height + this.margin.top + this.margin.bottom) + 'px')
