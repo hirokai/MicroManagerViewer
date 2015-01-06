@@ -1,4 +1,4 @@
-# grunt-react
+# Multidimensional image viewer for MicroManager (MdV)
 
 [![Dependencies](https://david-dm.org/hirokai/MicroManagerViewer.png)](https://david-dm.org/hirokai/MicroManagerViewer)
 

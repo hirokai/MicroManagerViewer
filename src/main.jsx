@@ -15,7 +15,7 @@ var App = React.createClass({
                 </ul>
                 <hr/>
                 <div>
-                    MicroManagerViewer (<a href='https://github.com/hirokai/MicroManagerViewer/'>source code</a>)
+                    Multidimensional image viewer (<a href='https://github.com/hirokai/MicroManagerViewer/'>source code</a>)
                 </div>
             </div>
             <RightPane dataset={this.state.currentDataset}/>
