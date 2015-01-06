@@ -1,0 +1,181 @@
+body {
+    margin: 20px;
+}
+
+svg#map {
+    background: #000;
+    width: 900px;
+    height: 600px;
+}
+
+.axis.primary {
+    fill: white;
+    font-size: 12px;
+/ / vector-effect : non-scaling-stroke;
+}
+
+.axis path {
+}
+
+.axis line {
+    fill: none;
+    stroke: #333;
+    stroke-width: 1px;
+    shape-rendering: crispEdges;
+    vector-effect: non-scaling-stroke;
+}
+
+.tick line {
+    stroke: white;
+    stroke-width: 2px;
+}
+
+#tools {
+    width: 900px;
+}
+
+.color {
+    width: 40px;
+    font-size: 10px;
+}
+
+rect.imgbox {
+    vector-effect: non-scaling-stroke;
+    fill: none;
+}
+
+#pos-slider .slider-handle {
+    background: #7f8a8a;
+}
+
+#frame-slider .slider-handle {
+    background: #337ab7;
+}
+
+#ch-slider .slider-handle {
+    background: #ffa11e;
+}
+
+#slice-slider .slider-handle {
+    background: #5cb85c;
+}
+
+select {
+    font-size: 14px;
+    height: 20px ! important;
+    line-height: 20px ! important;
+}
+
+.slider {
+    margin: 20px 0 10px 0;
+}
+
+#frameslider-wrap, #channelslider-wrap {
+    display: none;
+}
+
+#data-select {
+    margin: 20px 0px;
+}
+
+.btn-default:focus {
+    background-color: inherit ! important;
+}
+
+.dim-select {
+    width: 70px;
+}
+
+#filterinfo {
+    margin: 15px 0;
+}
+
+.dim-btn {
+    width: 80px;
+}
+
+.preset-btn {
+    width: 80px;
+//            font-size: 11px;
+}
+
+#dim-pos.active {
+    background-color: #9c9c9c ! important;
+    color: white;
+    font-weight: bold;
+}
+#dim-frame.active {
+    background: #337ab7 ! important;
+    color: white;
+    font-weight: bold;
+}
+#dim-ch.active {
+    background: #ffa11e ! important;
+    color: white;
+    font-weight: bold;
+}
+#dim-slice.active {
+    background: #5cb85c ! important;
+    color: white;
+    font-weight: bold;
+}
+
+#tags {
+    margin: 0px 0px 20px 0px;
+}
+
+.tag {
+    font-size: 14px;
+}
+
+button:focus,
+button:active,
+button:hover
+{
+    outline:0px !important;
+    -webkit-appearance:none;
+}
+
+
+/*.btn-default.active {*/
+/*background-color: #ffb1a8 ! important;*/
+/*}*/
+
+
+.nav > li > a {
+    padding: 3px ! important;
+}
+
+#selectinfo {
+    width: 900px;
+}
+
+#img-tool {
+    width: 900px;
+    margin: 10px 0px;
+    alignment-baseline: middle;
+}
+
+#img-tool > * {
+    float: left;
+}
+
+#data-menu {
+    font-size: 12px;
+}
+
+#map-tools > * {
+    float: left;
+}
+
+.map-select {
+    width: 50px;
+}
+.map-select.active {
+    font-weight: bold;
+}
+
+pre {
+    padding: 5px;
+    margin-bottom: 15px;
+}
