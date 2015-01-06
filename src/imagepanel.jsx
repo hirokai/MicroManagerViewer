@@ -170,10 +170,12 @@ var ImgPanel = React.createClass({
         this.scale = d3.event.scale;
         updateImageResolution(d3.event.scale);
 
+        var map_x = this.props.showOpt.tile ? 'x' : this.props.showOpt.mapX;
+        var map_y = this.props.showOpt.tile ? 'y' : this.props.showOpt.mapY;
+
         //update axes
-        xAxisScale.domain(calculateAxisDomain(this.props.showOpt.mapX,tr,scale,'x',this.props.showOpt.marginRatio));
-        yAxisScale.domain(calculateAxisDomain(this.props.showOpt.mapY,tr,scale,'y',this.props.showOpt.marginRatio));
-        yAxisScale.domain();
+        xAxisScale.domain(calculateAxisDomain(map_x,tr,scale,'x',this.props.showOpt.marginRatio));
+        yAxisScale.domain(calculateAxisDomain(map_y,tr,scale,'y',this.props.showOpt.marginRatio));
         xAxis.scale(xAxisScale);
         yAxis.scale(yAxisScale);
 
@@ -193,8 +195,8 @@ var ImgPanel = React.createClass({
                 el.tickValues(null);
             }
         }
-        job(this.props.showOpt.mapX,xAxis);
-        job(this.props.showOpt.mapY,yAxis);
+        job(map_x,xAxis);
+        job(map_y,yAxis);
         xAxisObj.call(xAxis);
         yAxisObj.call(yAxis);
 
@@ -274,8 +276,11 @@ var ImgPanel = React.createClass({
                 el.text('')
             }
         }
-        job(this.props.showOpt.mapX, this.xLabel);
-        job(this.props.showOpt.mapY, this.yLabel);
+        var map_x = this.props.showOpt.tile ? 'x' : this.props.showOpt.mapX;
+        var map_y = this.props.showOpt.tile ? 'y' : this.props.showOpt.mapY;
+
+        job(map_x, this.xLabel);
+        job(map_y, this.yLabel);
     }
 });
 
