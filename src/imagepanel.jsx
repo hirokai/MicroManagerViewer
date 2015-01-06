@@ -97,7 +97,7 @@ var ImgPanel = React.createClass({
             .attr("class", "dot");
     },
     updateImages(imgs,opt,resetZoom) {
-        _updateImages(this.props.dataset,imgs,opt,this.click,this.props.selected,resetZoom);
+        _updateImages(this.props.dataset,imgs,opt,this.click,this.props.selected,resetZoom,this);
         updateImageResolution(this.scale);
     },
     click(d){
@@ -273,7 +273,7 @@ function scaleTime(imgs,t){
 
 
 // Update images in svg panel and info.
-function _updateImages(currentDataset,imgs, opt,click,selected,resetZoom) {
+function _updateImages(currentDataset,imgs, opt,click,selected,resetZoom, self) {
     console.log(resetZoom);
     //console.log('updateImages()',imgs,opt);
 
@@ -281,12 +281,17 @@ function _updateImages(currentDataset,imgs, opt,click,selected,resetZoom) {
 
     var maxImages = 300;
     if (imgs.length > maxImages) {
-        $('#selectinfo').html('<span style="color: orange;">Too many (>'+maxImages+') images. Filter by other conditions.</span>');
+        svg.append('text')
+            .attr('id','message-svg')
+            .attr({x: self.props.width/2, y: self.props.height/2, fill: 'orange', 'text-anchor': 'middle'})
+            .text('Too many (>'+maxImages+') images. Filter by other conditions.');
         dot = dot.selectAll('g').data([], function (d) {
             return d.uuid;
         });
         dot.exit().remove();
         return;
+    }else{
+        d3.select('#message-svg').remove();
     }
     imgs = _.map(_.sortBy(imgs,function(im){
 //            console.log(im,state.show.sortKey, im[state.show.sortKey]);

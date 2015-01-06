@@ -235,10 +235,10 @@ var RightPane = React.createClass({
 var Tags = React.createClass({
     render() {
         return <div id='tags'>
-                {this.props.dims.pos > 1 ? <span className="label label-default">Positions</span> : ''}
-                {this.props.dims.frame > 1 ? <span className="label label-primary">Frames</span> : ''}
-                {this.props.dims.ch > 1 ? <span className="label label-warning">Channels</span> : ''}
-                {this.props.dims.slice > 1 ? <span className="label label-success">Slices</span> : ''}
+                {this.props.dims.pos > 1 ? <span className="label label-default tag">Positions</span> : ''}
+                {this.props.dims.frame > 1 ? <span className="label label-primary tag">Frames</span> : ''}
+                {this.props.dims.ch > 1 ? <span className="label label-warning tag">Channels</span> : ''}
+                {this.props.dims.slice > 1 ? <span className="label label-success tag">Slices</span> : ''}
         </div>;
     }
 });
@@ -248,40 +248,19 @@ var DimFilters = React.createClass({
         dims: React.PropTypes.object.isRequired,
         filterDims: React.PropTypes.object.isRequired
     },
-    toggleDim: function (ev) {
-        var el = $(ev.nativeEvent.target);
-        var dim = el.attr('data-value');
-        var ds = _.extend({},this.props.filterDims);
-        ds[dim] = !ds[dim];
-        this.props.onChangeFilterDims(ds)
-    },
-    dimPreset: function (dim) {
-        //      renderReact();
-    },
-    btn: function (title, val, clicked, enabled, active) {
-        var cx = React.addons.classSet;
-        var classes = cx({'btn': true, 'btn-sm': true, 'btn-default': true, 'active': active});
-        return <button id={'dim-'+val} onClick={clicked} className={classes} key={title} data-value={val} disabled={!enabled ? 'disabled' : ''}>{title}</button>
-    },
-    btnp: function (title, val, clicked, enabled) {
-        var cx = React.addons.classSet;
-        var classes = cx({'btn': true, 'btn-sm': true, 'btn-default': true});
-        return <button onClick={clicked} className={classes} key={title} data-value={val} disabled={!enabled ? 'disabled' : ''}>{title}</button>
-    },
-    componentDidMount: function(){
-
-    },
     render: function () {
         return <div id='dim-select-btns'>
             <div>
+                <span style={{'margin': '0px 10px 10px 20px'}}>Select by</span>
                 <div className="btn-group" role="group" aria-label="...">
                     {this.btn('Position', 'pos', this.toggleDim, this.props.dims.pos > 1, this.props.filterDims.pos)}
                     {this.btn('Frame', 'frame', this.toggleDim, this.props.dims.frame > 1, this.props.filterDims.frame)}
                     {this.btn('Channel', 'ch', this.toggleDim, this.props.dims.ch > 1, this.props.filterDims.ch)}
                     {this.btn('Slice', 'slice', this.toggleDim, this.props.dims.slice > 1, this.props.filterDims.slice)}
                 </div>
-                <span style={{'marginLeft': '30px'}}>Preset</span>
+                <span style={{'margin': '0px 10px 10px 20px'}}>Preset</span>
                 <div className="btn-group" role="group" aria-label="...">
+                    {this.btnp('No filter', '', this.dimPreset, true)}
                     {this.btnp('Pos x Frame', 'pos,frame', this.dimPreset, this.props.dims.pos > 1 && this.props.dims.frame > 1)}
                     {this.btnp('Frame x Ch', 'frame,ch', this.dimPreset, this.props.dims.frame > 1 && this.props.dims.ch > 1)}
                     {this.btnp('Pos x Ch', 'pos,ch', this.dimPreset, this.props.dims.pos > 1 && this.props.dims.ch > 1)}
@@ -294,6 +273,33 @@ var DimFilters = React.createClass({
             {this.props.filterDims.ch ? <Slider dim='ch' max={this.props.dims.ch-1} onChange={this.props.onChangeCoord}/> : ''}
             {this.props.filterDims.slice ? <Slider dim='slice' max={this.props.dims.slice-1} onChange={this.props.onChangeCoord}/> : ''}
         </div>;
+    },
+    toggleDim: function (ev) {
+        var el = $(ev.nativeEvent.target);
+        var dim = el.attr('data-value');
+        var ds = _.extend({},this.props.filterDims);
+        ds[dim] = !ds[dim];
+        this.props.onChangeFilterDims(ds)
+    },
+    dimPreset: function (ev) {
+        var v = $(ev.nativeEvent.target).attr('data-value').split(',');
+        var ds = _.object(_.map(['pos','frame','ch','slice'], function(d){
+            return [d,_.contains(v,d)];
+        }));
+        this.props.onChangeFilterDims(ds);
+    },
+    btn: function (title, val, clicked, enabled, active) {
+        var cx = React.addons.classSet;
+        var classes = cx({'btn': true, 'btn-sm': true, 'btn-default': true, 'dim-btn': true, 'active': active});
+        return <button id={'dim-'+val} onClick={clicked} className={classes} key={title} data-value={val} disabled={!enabled ? 'disabled' : ''}>{title}</button>
+    },
+    btnp: function (title, val, clicked, enabled) {
+        var cx = React.addons.classSet;
+        var classes = cx({'btn': true, 'btn-xs': true, 'preset-btn': true, 'btn-default': true});
+        return <button onClick={clicked} className={classes} key={title} data-value={val} disabled={!enabled ? 'disabled' : ''}>{title}</button>
+    },
+    componentDidMount: function(){
+
     },
     onChangeCoord(ev){
         this.props.onChangeCoord(ev);
