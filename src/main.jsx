@@ -13,6 +13,10 @@ var App = React.createClass({
                         return <DataSetEntry key={k} data={d} data-uuid={k}/>;
                     })}
                 </ul>
+                <hr/>
+                <div>
+                    MicroManagerViewer (<a href='https://github.com/hirokai/MicroManagerViewer/'>source code</a>)
+                </div>
             </div>
             <RightPane dataset={this.state.currentDataset}/>
         </div>;
@@ -79,7 +83,6 @@ var RightPane = React.createClass({
             , coord: {pos: null, frame: null, ch: null, slice: null}
             , selectedImages: []  //Shown images.
             , filterDims: {pos: false, frame: false, ch: false, slice: false}
-            , remainingDim: []
             , selected: {}  // Selected by clicking.
             , show: {tile: true, mapX: 'x', mapY: 'y',sortKey: 'time', marginRatio: 1.1}
             , startTime: null
@@ -96,18 +99,21 @@ var RightPane = React.createClass({
                     <DimFilters dims={this.props.dataset.dims} filterDims={this.state.filterDims} onChangeFilterDims={this.filterDimChanged}
                         onChangeCoord={this.coordChanged}
                     />
-                    <FilterInfo selectedImages={this.state.selectedImages} filterDims={this.state.filterDims} coord={this.state.coord} show={this.state.show} remainingDim={this.state.remainingDim}/>
+                    <FilterInfo selectedImages={this.state.selectedImages} filterDims={this.state.filterDims} coord={this.state.coord} show={this.state.show} remainingDim={this.calcRemainingDim()}/>
                     <div>
-                        <MapTools remainingDim={this.state.remainingDim} dims={this.state.dims}
+                        <MapTools remainingDim={this.calcRemainingDim()} dims={this.state.dims}
                             onClickMapMode={this.onClickMapMode}
                             show={this.state.show}
-                            remainingDim={this.state.remainingDim}
+                            remainingDim={this.calcRemainingDim()}
                             onMapXYChange={this.onMapXYChange}
+                            onChangeSort={this.onChangeSort}
                             onChangeSortReverse={this.onChangeSortReverse}
                         />
                         <div style={{clear: 'both'}}></div>
-                        <ColorPickers/>
                         <button id="zoomAll" className="btn btn-default btn-sm" onClick={this.zoomAllClicked}>Zoom to show all</button>
+                        <span>Mouse wheel to zoom, drag to pan.</span>
+                        <ColorPickers/>
+
                     </div>
                 </div>
                 <div style={{clear: 'both'}}></div>
@@ -126,6 +132,11 @@ var RightPane = React.createClass({
         v.mapY = c[1];
         this.setState({show: v});
     },
+    onChangeSort(v){
+        var o = _.extend({},this.state.show);
+        o.sortKey = v;
+        this.setState({show: o});
+    },
     onChangeSortReverse(c){
         var v = _.extend({},this.state.show);
         v.sortReverse = c;
@@ -137,14 +148,18 @@ var RightPane = React.createClass({
         this.setState({show: v});
     },
     coordChanged(v) {
-        var self = this;
         var newCoord = _.extend({},this.state.coord);
         newCoord[v.key] = v.value;
+
+        this.setState({coord: newCoord, selectedImages: this.selectImages(this.state.images, this.state.filterDims, newCoord), remainingDim: this.calcRemainingDim()});
+    },
+    calcRemainingDim(){
         var rem = [];
+        var self = this;
         _.map(['pos','frame','ch','slice'],function(k){
             if(self.state.dims[k] > 1 && !self.state.filterDims[k]) rem.push(k);
         });
-        this.setState({coord: newCoord, selectedImages: this.selectImages(this.state.images, this.state.filterDims, newCoord), remainingDim: rem});
+        return rem;
     },
     filterDimChanged(filterDims){
         var ov = this.state.filterDims;
@@ -154,7 +169,7 @@ var RightPane = React.createClass({
             newCoord[d] = filterDims[d] ? (ov[d] ? currentCoord[d] : 0): null;
         });
         console.log('filterDimChanged',filterDims,newCoord);
-        this.setState({filterDims: filterDims, coord: newCoord, selectedImages: this.selectImages(this.state.images, filterDims, newCoord)});
+        this.setState({filterDims: filterDims, remainingDim: this.calcRemainingDim(), coord: newCoord, selectedImages: this.selectImages(this.state.images, filterDims, newCoord)});
     },
     zoomAllClicked(){
         var r = calculateOptimalZoom();
@@ -432,6 +447,7 @@ var MapTools = React.createClass({
         onClickMapMode: React.PropTypes.func,
         onMapXYChange: React.PropTypes.func,
         onChangeSortReverse: React.PropTypes.func,
+        onChangeSort: React.PropTypes.func,
         remainingDim: React.PropTypes.array.isRequired,
         show: React.PropTypes.object.isRequired
     },
@@ -459,7 +475,9 @@ var MapTools = React.createClass({
             <select name="" id="tile-sort" onChange={this.onChangeSort}>
                     {this.sortOptions()}
             </select>
-            <input type="checkbox" id="sort-reverse" checked={this.props.show.sortReverse ? 'checked' : ''} onChange={this.onClickSortReverse}/>
+            <input type="checkbox" id="sort-reverse" checked={this.props.show.sortReverse ? 'checked' : ''} onChange={this.onClickSortReverse}
+                style={{marginLeft: '10px'}}
+            />
             <label htmlFor="sort-reverse">Reverse</label>
         </div>;
     },
@@ -471,7 +489,7 @@ var MapTools = React.createClass({
             <select name="" id="xcoord" value={this.props.show.mapX} onChange={this.onChangeCoord}>
                             {this.coordOpts()}
             </select>
-            <span id="switch-xy" style={{cursor: 'pointer'}} onClick={this.onClickSwitch}>&nbsp;&#8596;&nbsp;</span>
+            <button id="switch-xy" className='btn btn-xs btn-default' style={{cursor: 'pointer', margin: '0px 7px'}} onClick={this.onClickSwitch}>&nbsp;&#8596;&nbsp;</button>
             <label htmlFor="ycoord">Y</label>
             <select name="" id="ycoord" value={this.props.show.mapY} onChange={this.onChangeCoord}>
                             {this.coordOpts()}
@@ -491,8 +509,8 @@ var MapTools = React.createClass({
         var tile = $(ev.nativeEvent.target).attr('id') =='map-tile';
         this.props.onClickMapMode(tile);
     },
-    onChangeSort() {
-
+    onChangeSort(ev) {
+        this.props.onChangeSort($(ev.nativeEvent.target).val())
     },
     onClickSortReverse(ev) {
         this.props.onChangeSortReverse($(ev.nativeEvent.target).prop('checked'));
@@ -515,6 +533,7 @@ var MapTools = React.createClass({
     },
     sortOptions() {
         var options = [];
+        console.log(this.props.remainingDim);
         if(_.contains(this.props.remainingDim, 'pos') && this.props.dims.pos > 1)
             options.push(<option value="pos" key='0'>Position index</option>);
         if(_.contains(this.props.remainingDim, 'frame') && this.props.dims.frame > 1)

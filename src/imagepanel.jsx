@@ -98,6 +98,7 @@ var ImgPanel = React.createClass({
     },
     updateImages(imgs,opt,resetZoom) {
         _updateImages(this.props.dataset,imgs,opt,this.click,this.props.selected,resetZoom,this);
+        this.updateAxisLabels();
         updateImageResolution(this.scale);
     },
     click(d){
@@ -154,8 +155,8 @@ var ImgPanel = React.createClass({
         updateImageResolution(d3.event.scale);
 
         //update axes
-        xAxisScale.domain(calculateAxisDomain(this.props.showOpt.mapX,tr,scale,'x'));
-        yAxisScale.domain(calculateAxisDomain(this.props.showOpt.mapY,tr,scale,'y'));
+        xAxisScale.domain(calculateAxisDomain(this.props.showOpt.mapX,tr,scale,'x',this.props.showOpt.marginRatio));
+        yAxisScale.domain(calculateAxisDomain(this.props.showOpt.mapY,tr,scale,'y',this.props.showOpt.marginRatio));
         yAxisScale.domain();
         xAxis.scale(xAxisScale);
         yAxis.scale(yAxisScale);
@@ -257,20 +258,16 @@ var ImgPanel = React.createClass({
                 el.text('')
             }
         }
-        job(this.props.show.mapX, this.xLabel);
-        job(this.props.show.mapY, this.yLabel);
+        job(this.props.showOpt.mapX, this.xLabel);
+        job(this.props.showOpt.mapY, this.yLabel);
     }
 });
 
-
-
-
 function scaleTime(imgs,t){
-    var startTime = _.min(_.map(images,function(im){return im.time;}));
+    var startTime = _.min(_.map(imgs,function(im){return im.time;}));
 //        console.log('scaleTime: ', (t-startTime)/1000);
-    return (t-startTime)/1000*state.show.timeScale;
+    return (t-startTime)/1000*timeScale;
 }
-
 
 // Update images in svg panel and info.
 function _updateImages(currentDataset,imgs, opt,click,selected,resetZoom, self) {
@@ -293,6 +290,8 @@ function _updateImages(currentDataset,imgs, opt,click,selected,resetZoom, self) 
     }else{
         d3.select('#message-svg').remove();
     }
+
+    console.debug(opt.sortKey);
     imgs = _.map(_.sortBy(imgs,function(im){
 //            console.log(im,state.show.sortKey, im[state.show.sortKey]);
         return im[opt.sortKey];
@@ -313,33 +312,29 @@ function _updateImages(currentDataset,imgs, opt,click,selected,resetZoom, self) 
     var col = Math.round(Math.sqrt(imgs.length)*1.25);
     var interval =  size*opt.marginRatio;
     var x = function (d, i) {
-        if(isNaN(d.time)){
-            //        console.error('d.time is NaN!');
-            //        console.log(d);
-        }
         var xi = i % col;
         var r = opt.tile ? (size * opt.marginRatio * xi) :
-            (opt.mapmode_x == 'x' ? (-d.x) :
-                (opt.mapmode_x == 'y' ? (-d.y) :
-                    (opt.mapmode_x == 'pos' ? d.pos * interval:
-                        (opt.mapmode_x == 'time' ? scaleTime(imgs,d.time) :
-                            (opt.mapmode_x == 'frame' ? (d.frame * interval) :
-                                (opt.mapmode_x == 'ch' ? (d.ch * interval) :
-                                    (opt.mapmode_x == 'slice' ? (d.slice * interval) :
-                                        (opt.mapmode_x == 'const' ? 0 : 0))))))));
+            (opt.mapX == 'x' ? (-d.x) :
+                (opt.mapX == 'y' ? (-d.y) :
+                    (opt.mapX == 'pos' ? d.pos * interval:
+                        (opt.mapX == 'time' ? scaleTime(imgs,d.time) :
+                            (opt.mapX == 'frame' ? (d.frame * interval) :
+                                (opt.mapX == 'ch' ? (d.ch * interval) :
+                                    (opt.mapX == 'slice' ? (d.slice * interval) :
+                                        (opt.mapX == 'const' ? 0 : 0))))))));
         return isNaN(r) ? 0 : r;
     };
     var y = function (d, i) {
         var yi = Math.floor(i / col);
         var r = opt.tile ? (size * opt.marginRatio * yi) :
-            (opt.mapmode_y == 'x' ? (-d.x) :
-                (opt.mapmode_y == 'y' ? (-d.y) :
-                    (opt.mapmode_y == 'pos' ? d.pos * interval:
-                        (opt.mapmode_y == 'time' ? scaleTime(imgs,d.time) :
-                            (opt.mapmode_y == 'frame' ? (d.frame * interval) :
-                                (opt.mapmode_y == 'ch' ? (d.ch * interval) :
-                                    (opt.mapmode_y == 'slice' ? (d.slice * interval) :
-                                        (opt.mapmode_y == 'const' ? 0 : 0))))))));
+            (opt.mapY == 'x' ? (-d.x) :
+                (opt.mapY == 'y' ? (-d.y) :
+                    (opt.mapY == 'pos' ? d.pos * interval:
+                        (opt.mapY == 'time' ? scaleTime(imgs,d.time) :
+                            (opt.mapY == 'frame' ? (d.frame * interval) :
+                                (opt.mapY == 'ch' ? (d.ch * interval) :
+                                    (opt.mapY == 'slice' ? (d.slice * interval) :
+                                        (opt.mapY == 'const' ? 0 : 0))))))));
         return isNaN(r) ? 0 : r;
     };
 
@@ -433,9 +428,11 @@ function calculateOptimalZoom(marginRatio){
 var axisPos = {left: 60, right: 800, bottom: 550, top: 20};
 var axisW = axisPos.right-axisPos.left, axisH = axisPos.bottom - axisPos.top;
 
-var timeScale;
+var timeScale = 1;
 
 function calculateAxisDomain(mode,tr,scale,ax,marginRatio){
+    console.log(mode,tr,scale,ax,marginRatio);
+
     if(_.contains(['x','y','z'],mode)){
         if(ax == 'x'){
             return [(axisPos.left-tr[0])/scale,(axisPos.right-tr[0])/scale];
@@ -445,6 +442,7 @@ function calculateAxisDomain(mode,tr,scale,ax,marginRatio){
     }
 
     var factor = size*marginRatio;
+
 
     if(_.contains(['pos','frame','ch','slice','const'], mode)){
         //FIXME: This is incorrect for marginRatio other than 1.1
