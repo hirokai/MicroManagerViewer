@@ -2,6 +2,10 @@ body {
     margin: 20px;
 }
 
+#app {
+    margin-top: -15px;
+}
+
 svg#map {
     background: #000;
     width: 900px;
@@ -179,3 +183,5 @@ pre {
     padding: 5px;
     margin-bottom: 15px;
 }
+
+.twitter-share-button[style] { vertical-align: text-bottom !important; }

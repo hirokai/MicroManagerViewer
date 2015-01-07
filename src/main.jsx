@@ -1,10 +1,10 @@
 /** @jsx React.DOM */
 
 var App = React.createClass({
-    getInitialState: function(){
+    getInitialState(){
         return {datasets: {}, currentDataset: null, dims: {}};
     },
-    render: function(){
+    render(){
         return <div>
             <div className="col-md-3">
                 <p>Choose dataset</p>
@@ -13,13 +13,9 @@ var App = React.createClass({
                         return <DataSetEntry key={k} data={d} data-uuid={k}/>;
                     })}
                 </ul>
-                <hr/>
-                <div>
-                    Multidimensional image viewer (<a href='https://github.com/hirokai/MicroManagerViewer/'>source code</a>)
                 </div>
-            </div>
-            <RightPane dataset={this.state.currentDataset}/>
-        </div>;
+                <RightPane dataset={this.state.currentDataset}/>
+            </div>;
     },
     filterDimChanged: function(d){
         console.log(d);
@@ -119,7 +115,6 @@ var RightPane = React.createClass({
                     coord={this.state.coord}
                     filterDims={this.state.filterDims}
                 />
-                <ImgInfo/>
             </div>;
     },
     onMapXYChange(c){
