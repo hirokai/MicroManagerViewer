@@ -90,7 +90,8 @@ var ImgPanel = React.createClass({
 
         //FIXME: This is VERY adhoc.
         var isSafari = (navigator.userAgent.indexOf('Safari') != -1 && navigator.userAgent.indexOf('Chrome') == -1);
-        if(!firstTime && isSafari){
+        var isIE = navigator.userAgent.indexOf('MSIE') > -1;
+        if(!firstTime && (isSafari || isIE)){
             return;
         }
         svg = d3.select("#map")
