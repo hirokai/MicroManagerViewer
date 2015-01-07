@@ -47,7 +47,7 @@ var ImgPanel = React.createClass({
         zoom.event(svg.transition().duration(500));
     },
     componentDidMount() {
-        this.setupD3();
+        this.setupD3(true);
         console.log('componentDidMount!',this.props);
         this.updateImages(this.props.images,this.props.showOpt,true);
     },
@@ -62,7 +62,7 @@ var ImgPanel = React.createClass({
         console.log('componentDidUpdate',this.props,prevProps,resetZoom);
         this.updateImages(this.props.images, this.props.showOpt, resetZoom);
         if(this.props.dataset.uuid != prevProps.dataset.uuid){
-            this.setupD3();
+            this.setupD3(false);
         }
         if (this.props.preloadCache) {
             this.preloadCache();
@@ -78,7 +78,7 @@ var ImgPanel = React.createClass({
     //    )
     //},
     margin: {top: -5, right: -5, bottom: -5, left: -5},
-    setupD3() {
+    setupD3(firstTime) {
         this.width = (mobile ? w * 0.9 : this.props.width) - this.margin.left - this.margin.right;
         this.height = (mobile ? h * 0.5 : this.props.height) - this.margin.top - this.margin.bottom;
 
@@ -87,6 +87,12 @@ var ImgPanel = React.createClass({
             .on("zoom", this.zoomed);
 
         $("#map").html("");
+
+        //FIXME: This is VERY adhoc.
+        var isSafari = (navigator.userAgent.indexOf('Safari') != -1 && navigator.userAgent.indexOf('Chrome') == -1);
+        if(!firstTime && isSafari){
+            return;
+        }
         svg = d3.select("#map")
             .style("width", '' + (this.width + this.margin.left + this.margin.right) + 'px')
             .style("height", '' + (this.height + this.margin.top + this.margin.bottom) + 'px')

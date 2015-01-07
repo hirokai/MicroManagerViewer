@@ -110,7 +110,7 @@ var RightPane = React.createClass({
                 </div>
                 <div style={{clear: 'both'}}></div>
                 <ImgPanel dataset={this.props.dataset}
-                    allimages={this.state.images} images={this.state.selectedImages} showOpt={this.state.show} width={900} height={600} preloadCache={true}
+                    allimages={this.state.images} images={this.state.selectedImages} showOpt={this.state.show} width={900} height={600} preloadCache={false}
                     selected={this.state.selected} onChangeSelected={this.onChangeSelected}
                     coord={this.state.coord}
                     filterDims={this.state.filterDims}

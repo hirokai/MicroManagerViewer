@@ -185,3 +185,15 @@ pre {
 }
 
 .twitter-share-button[style] { vertical-align: text-bottom !important; }
+
+.github-btn {
+    vertical-align: text-bottom !important;
+    padding-top: 15px;
+    margin-bottom: -26px;
+    height: 59px;
+}
+
+.fb-like {
+    width: 92px ! important;
+    height: 20px ! important;
+}
