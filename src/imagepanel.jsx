@@ -86,7 +86,7 @@ var ImgPanel = React.createClass({
             .scaleExtent([0.02, 10])
             .on("zoom", this.zoomed);
 
-        d3.select("#map").html("");
+        $("#map").html("");
         svg = d3.select("#map")
             .style("width", '' + (this.width + this.margin.left + this.margin.right) + 'px')
             .style("height", '' + (this.height + this.margin.top + this.margin.bottom) + 'px')
