@@ -514,3 +514,4 @@ function updateImageResolution(scale){
         });
     }
 }
+
