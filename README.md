@@ -1,6 +1,7 @@
 # Multidimensional image viewer for MicroManager (MdV)
 
 [![Dependencies](https://david-dm.org/hirokai/MicroManagerViewer.png)](https://david-dm.org/hirokai/MicroManagerViewer)
+[![Build Status](https://travis-ci.org/hirokai/MicroManagerViewer.svg?branch=master)](https://travis-ci.org/hirokai/MicroManagerViewer)
 
 > A prototype web app for viewing multidimensional images from  [MicroManager](https://www.micro-manager.org/) microscopy software.
 
