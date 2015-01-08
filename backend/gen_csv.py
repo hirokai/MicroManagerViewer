@@ -188,11 +188,30 @@ def process_metaset(ds):
 	pos_flatten = sorted(reduce(lambda c, d: c + d, map(lambda b: b[0], filter(lambda a: a is not None, pos_all))),
 	                     key=lambda e: e[key])
 
+	def calc_dim_metaset(poss, meta_dim, dim):
+		m = {'pos': [4,16], 'frame': [5,17], 'ch': [6,18], 'slice': [7,19]}
+		if meta_dim != dim:
+			return 1 + max(map(lambda a: a[m[dim][0]], poss))
+		else:
+			# Sort by meta-dim first, then scan through them to get unique coord to find max.
+			poss2 = sorted(poss,key=lambda p: p[m[dim][1]])
+			max_i = 0
+			prv_c = 0
+			cur_coord = 0
+			max_d = 0
+			for pos in poss2:
+				if pos[m[dim][1]] != prv_c:
+					prv_c = pos[m[dim][1]]
+					cur_coord += max_i + 1
+					max_i = 0
+				max_i = max([max_i,pos[m[dim][0]]])
+				max_d = max([max_d,pos[m[dim][0]]+cur_coord])
+			return max_d + 1
 
-	num_pos = (1 + max(map(lambda a: a[16], pos_flatten))) if ds['dimension'] == 'pos' else  (1 + max(map(lambda a: a[4], pos_flatten)))
-	num_fr = (1 + max(map(lambda a: a[17], pos_flatten))) if ds['dimension'] == 'frame' else  (1 + max(map(lambda a: a[5], pos_flatten)))
-	num_ch = (1 + max(map(lambda a: a[18], pos_flatten))) if ds['dimension'] == 'ch' else  (1 + max(map(lambda a: a[6], pos_flatten)))
-	num_sl = (1 + max(map(lambda a: a[19], pos_flatten))) if ds['dimension'] == 'slice' else  (1 + max(map(lambda a: a[7], pos_flatten)))
+	num_pos = calc_dim_metaset(pos_flatten, ds['dimension'], 'pos')
+	num_fr = calc_dim_metaset(pos_flatten, ds['dimension'], 'frame')
+	num_ch = calc_dim_metaset(pos_flatten, ds['dimension'], 'ch')
+	num_sl = calc_dim_metaset(pos_flatten, ds['dimension'], 'slice')
 
 	import hashlib
 

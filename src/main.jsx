@@ -169,10 +169,10 @@ var RightPane = React.createClass({
         console.log(images.length,f,coord);
         var self = this;
         var res = _.filter(images, function (img) {
-            return (!f.pos || coord.pos == null || (img.meta_pos || img.pos) == coord.pos)
-                && (!f.ch || coord.ch == null || (img.meta_ch || img.ch) == coord.ch)
-                && (!f.frame || coord.frame == null || (img.meta_frame || img.frame) == coord.frame)
-                && (!f.slice || coord.slice == null || (img.meta_slice || img.slice) == coord.slice);
+            return (!f.pos || coord.pos == null || img.pos == coord.pos)
+                && (!f.ch || coord.ch == null || img.ch == coord.ch)
+                && (!f.frame || coord.frame == null || img.frame == coord.frame)
+                && (!f.slice || coord.slice == null || img.slice == coord.slice);
         });
         return res;
     },
@@ -183,16 +183,40 @@ var RightPane = React.createClass({
             this.datasetChanged();
     },
     datasetChanged() {
+
+        // Convert coord for metaset.
+        function convertCoord(s, imgs){
+            if(!s.metaset) return;
+
+            var current_coord = 0;
+            var prv_c = 0;
+            var max_i = 0;
+            var imgs2 = _.sortBy(imgs,img => {return img['meta_'+s.metasetdim];});
+
+            _.map(imgs2,function(img){
+                if(img['meta_'+s.metasetdim] != prv_c){
+                    prv_c = img['meta_'+s.metasetdim];
+                    current_coord += (max_i+1);
+                    max_i = 0;
+                }
+                max_i = Math.max(max_i, img[s.metasetdim]);
+                img[s.metasetdim] += current_coord;
+//                console.log(current_coord,img[s.metasetdim],s.metasetdim);
+            });
+//            console.log(_.groupBy(imgs,img => {return img[s.metasetdim];}));
+            return imgs2;
+        }
+
         var self = this;
         console.log('datasetChanged()',this.props.dataset);
         var s = this.props.dataset;
         d3.csv("metadata/" + s.uuid + ".csv", d => {
             d.x = +d.x;
             d.y = +d.y;
-            d.pos = +d.meta_pos || +d.pos;
-            d.frame = +d.meta_frame || +d.frame;
-            d.ch = +d.meta_ch || +d.ch;
-            d.slice = +d.meta_slice || +d.slice;
+            d.pos = +d.pos;
+            d.frame = +d.frame;
+            d.ch = +d.ch;
+            d.slice = +d.slice;
             d.meta_pos = +d.meta_pos;
             d.meta_frame = +d.meta_frame;
             d.meta_ch = +d.meta_ch;
@@ -205,11 +229,16 @@ var RightPane = React.createClass({
 
             var startTime = _.min(ts);
 
+            if(s.metaset){
+                imgs = convertCoord(s,imgs);
+            }
             var dims = {};
-            dims.pos = s.meta_pos || s.positions;
-            dims.frame = s.meta_frame || s.frames;
-            dims.ch = s.meta_ch || s.channels;
-            dims.slice = s.meta_slice || s.slices;
+            dims.pos = s.metaset ? (_.max(_.map(imgs,im => {return im.pos;})) + 1) : s.positions;
+            dims.frame = s.metaset ? (_.max(_.map(imgs,im => {return im.frame;})) + 1) : s.frames;
+            dims.ch = s.metaset ? (_.max(_.map(imgs,im => {return im.ch;})) + 1) : s.channels;
+            dims.slice = s.metaset ? (_.max(_.map(imgs,im => {return im.slice;})) + 1) : s.slices;
+
+            s.dims = dims;
 
             console.log(dims, _.sortBy(Object.keys(dims),function(k){return -dims[k]})[0]);
             var biggestDim = _.sortBy(Object.keys(dims),function(k){return -dims[k]})[0];

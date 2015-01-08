@@ -22,7 +22,7 @@ module.exports = function(grunt) {
         watch: {
             react: {
                 files: 'src/*.jsx',
-                tasks: ['react:jsx']
+                tasks: ['react', 'uglify']
             }
         },
 
