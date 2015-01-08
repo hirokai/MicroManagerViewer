@@ -3,7 +3,8 @@ import os
 from joblib import Parallel, delayed
 import multiprocessing
 import logging
-from test_config import datasets
+# from test_config import datasets
+
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -19,7 +20,17 @@ def is_number(s):
 	except ValueError:
 		return False
 
-
+def read_json(path):
+	import json
+	ds = []
+	with open(path) as f:
+		obj = json.load(f)
+		root = obj['rootfolder']
+		for d in obj['datasets']:
+			if not 'folders' in d:
+				d['folders'] = map(lambda p: root + p, d['subfolders'])
+			ds.append(d)
+		return ds
 
 def my_parsetime(str):
 	from datetime import timedelta,datetime
@@ -196,6 +207,7 @@ def process_metaset(ds):
 def main():
 	import time
 	initial = time.time()
+	datasets = read_json("datasets.json")
 	for d in datasets:
 		if isinstance(d, dict):
 			process_metaset(d)
