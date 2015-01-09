@@ -1,6 +1,5 @@
 # Multidimensional image viewer for MicroManager (MdV)
 
-[![Dependencies](https://david-dm.org/hirokai/MicroManagerViewer.png)](https://david-dm.org/hirokai/MicroManagerViewer)
 [![Dependency Status](https://david-dm.org/hirokai/MicroManagerViewer.svg)](https://david-dm.org/hirokai/MicroManagerViewer)
 [![devDependency Status](https://david-dm.org/hirokai/MicroManagerViewer/dev-status.svg)](https://david-dm.org/hirokai/MicroManagerViewer#info=devDependencies)
 
