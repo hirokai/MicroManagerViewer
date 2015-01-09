@@ -8,9 +8,6 @@ var mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.te
 var w = screen.width;
 var h = screen.height;
 
-var zoom;
-var svg;
-
 var React = require('react/addons');
 
 var ImgPanel = React.createClass({
@@ -41,12 +38,14 @@ var ImgPanel = React.createClass({
             </div>
             ;
     },
+    svg: null,
+    zoom: null,
     zoomAllClicked(){
         var r = calculateOptimalZoom();
-
+        var zoom = this.zoom;
         zoom.translate([r[0], r[1]]);
         zoom.scale(r[2]);
-        zoom.event(svg.transition().duration(500));
+        zoom.event(this.svg.transition().duration(500));
     },
     componentDidMount() {
         this.setupD3(true);
@@ -65,6 +64,7 @@ var ImgPanel = React.createClass({
         this.updateImages(this.props.images, this.props.showOpt, resetZoom);
         if(this.props.dataset.uuid != prevProps.dataset.uuid){
             this.setupD3(false);
+//            this.zoomAllClicked();
         }
         if (this.props.preloadCache) {
             this.preloadCache();
@@ -84,7 +84,7 @@ var ImgPanel = React.createClass({
         this.width = (mobile ? w * 0.9 : this.props.width) - this.margin.left - this.margin.right;
         this.height = (mobile ? h * 0.5 : this.props.height) - this.margin.top - this.margin.bottom;
 
-        zoom = d3.behavior.zoom()
+        this.zoom = d3.behavior.zoom()
             .scaleExtent([0.02, 10])
             .on("zoom", this.zoomed);
 
@@ -98,16 +98,17 @@ var ImgPanel = React.createClass({
         //FIXME: This is VERY adhoc.
         var isSafari = (navigator.userAgent.indexOf('Safari') != -1 && navigator.userAgent.indexOf('Chrome') == -1);
         var isIE = navigator.userAgent.indexOf('MSIE') > -1;
-        if(!firstTime && (isSafari || isIE)){
+        if(!firstTime && (isSafari || isIE)) {
             return;
         }
-        svg = d3.select("#map")
+        this.svg = d3.select("#map")
             .style("width", '' + (this.width + this.margin.left + this.margin.right) + 'px')
             .style("height", '' + (this.height + this.margin.top + this.margin.bottom) + 'px')
             .append("g")
-            .call(zoom)
+            .call(this.zoom)
             .call(drag);
 
+        var svg = this.svg;
 
 
         var rect = svg.append("rect")
@@ -130,7 +131,7 @@ var ImgPanel = React.createClass({
             .attr("class", "dot");
     },
     updateImages(imgs,opt,resetZoom) {
-        _updateImages(this.props.dataset,imgs,opt,this.click,this.props.selected,resetZoom,this);
+        _updateImages(this.svg,this.zoom,this.props.dataset,imgs,opt,this.click,this.props.selected,resetZoom,this);
         this.updateAxisLabels();
         updateImageResolution(this.scale);
     },
@@ -183,7 +184,7 @@ var ImgPanel = React.createClass({
             this.dragOrigin = [se.x-c.left,se.y-c.top];
             console.log('dragstart',this.dragOrigin,d3.event );
             this.selectRect ? this.selectRect.remove() : null;
-            this.selectRect = svg.append('g').attr('transform','translate ('+this.dragOrigin[0]+','+this.dragOrigin[1]+')');
+            this.selectRect = this.svg.append('g').attr('transform','translate ('+this.dragOrigin[0]+','+this.dragOrigin[1]+')');
             this.selectRect.append('rect').attr({'width': 0,'height':0});
         }
     },
@@ -210,8 +211,8 @@ var ImgPanel = React.createClass({
         var scale = d3.event.scale;
 
         if(d3.event.sourceEvent ? d3.event.sourceEvent.altKey : false){
-            zoom.translate(this.tr);
-            zoom.scale(this.scale);
+            this.zoom.translate(this.tr);
+            this.zoom.scale(this.scale);
             return;
         }
 
@@ -289,11 +290,11 @@ var ImgPanel = React.createClass({
         xAxis = d3.svg.axis().scale(xAxisScale).orient('bottom').ticks(10).innerTickSize([10]).tickFormat(d3.format("d"));
         yAxis = d3.svg.axis().scale(yAxisScale).orient('left').ticks(10).innerTickSize([10]).tickFormat(d3.format("d"));
 
-        xAxisObj = svg.append("g")
+        xAxisObj = this.svg.append("g")
             .attr('transform','translate(0,'+axisPos.bottom+')')
             .attr("class",'x axis primary');
 //        .call(xAxis);
-        yAxisObj = svg.append("g")
+        yAxisObj = this.svg.append("g")
             .attr('transform','translate('+axisPos.left+',0)')
             .attr("class",'y axis primary');
         //       .call(yAxis);
@@ -390,7 +391,7 @@ function scaleTime(imgs,t){
 }
 
 // Update images in svg panel and info.
-function _updateImages(currentDataset,imgs, opt,click,selected,resetZoom, self) {
+function _updateImages(svg,zoom,currentDataset,imgs, opt,click,selected,resetZoom, self) {
     console.log(resetZoom);
     //console.log('updateImages()',imgs,opt);
 
