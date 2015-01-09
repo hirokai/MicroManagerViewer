@@ -2,20 +2,18 @@
   "name": "MicroManagerViewer",
   "version": "0.0.0",
   "description": "",
-  "main": "Gruntfile.js",
-  "dependencies": {
-    "grunt-contrib-uglify": "^0.7.0",
-    "grunt-contrib-watch": "^0.6.1",
-    "grunt-react": "^0.10.0",
-    "gulp": "^3.8.10",
-    "jest-cli": "^0.2.1",
-    "react-tools": ""
-  },
+  "main": "gulpfile.js",
+  "dependencies": {},
   "devDependencies": {
+    "browserify": "^8.0.3",
     "grunt-jsx": "^0.1.8",
     "gulp": "^3.8.10",
     "gulp-react": "^2.0.0",
     "gulp-uglifyjs": "^0.5.0",
+    "jest-cli": "^0.2.1",
+    "react": "^0.12.2",
+    "react-addons": "^0.9.0",
+    "react-tools": "",
     "reactify": "^0.17.1",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.0.0"

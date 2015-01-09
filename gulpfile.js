@@ -19,14 +19,13 @@ gulp.task('browserify', function () {
 
 
 gulp.task('default', function () {
-    return gulp.src('src/*.jsx')
-        .pipe(react({harmony:true}))
-        .pipe(uglify('combined.min.js', {outSourceMap: true}))
-        .pipe(gulp.dest('js'))
-        .on('error',function(err){
-            console.log(err.toString());
-            this.emit('end');
-        });
+    return browserify(['./src/main.jsx'])
+        .transform(reactify,{es6: true})
+        .bundle()
+        .pipe(source('combined.js'))
+        .pipe(buffer())
+        .pipe(uglify('combined.min.js', {outSourceMap: true, compress: {drop_console: true}, warnings: false}))
+        .pipe(gulp.dest('./js'));
 });
 
 gulp.task('watch', function() {

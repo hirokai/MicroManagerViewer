@@ -1,5 +1,9 @@
 /** @jsx React.DOM */
 
+var ImgPanel = require('./imagepanel.jsx');
+
+var React = require('react/addons');
+
 var App = React.createClass({
     getInitialState(){
         return {datasets: {}, currentDataset: null, dims: {}};
@@ -334,54 +338,6 @@ var DimFilters = React.createClass({
     }
 });
 
-var ColorPickers = React.createClass({
-    render: function(){
-        return <div><label htmlFor="colorpicker-bg">Background</label>
-            <input id='colorpicker-bg' className="color" defaultValue="#000"/>
-            <label htmlFor="colorpicker-fg">Foreground</label>
-            <input id='colorpicker-fg' className="color" defaultValue="#fff"/>
-            <label htmlFor="colorpicker-grid">Grid</label>
-            <input id='colorpicker-grid' className="color" defaultValue="#333"/>
-            <span style={{marginLeft: '30px'}}>Preset</span>
-
-            <div className="btn-group" role="group" aria-label="...">
-                <button type="button" className="btn btn-xs btn-default color-preset" onClick={this.presetColor} data-value="000,fff,333">Dark
-                </button>
-                <button type="button" className="btn btn-xs btn-default color-preset" onClick={this.presetColor} data-value="fff,000,ccc">Bright
-                </button>
-            </div>
-        </div>
-    },
-    presetColor: function(ev){
-        var el = $(ev.nativeEvent.target);
-        var cs = el.attr('data-value').split(',');
-        $('#colorpicker-bg').val(cs[0]).trigger('change');
-        $('#colorpicker-fg').val(cs[1]).trigger('change');
-        $('#colorpicker-grid').val(cs[2]).trigger('change');
-    },
-    componentDidMount: function(){
-        this.startColor('colorpicker-bg','000');
-        this.startColor('colorpicker-fg','fff');
-        this.startColor('colorpicker-grid','333');
-        $('#colorpicker-bg').on('change',function(){
-            $('svg').css('background','#'+$(this).val());
-        });
-
-        $('#colorpicker-fg').on('change',function(){
-            $('svg text,.axis.primary').css('fill','#'+$(this).val());
-        });
-
-        $('#colorpicker-grid').on('change',function(){
-            $('svg line').css('stroke','#'+$(this).val());
-        });
-    },
-    startColor: function(id,color){
-        var myPicker = new jscolor.color(document.getElementById(id), {});
-        myPicker.fromString(color); // now you can access API via 'myPicker' variable
-    }
-
-});
-
 var Slider = React.createClass({
     propTypes: {
         dim: React.PropTypes.string.isRequired
@@ -706,15 +662,4 @@ $(function () {
 });
 
 
-//
-// Utility functions
-//
-
-function imghref(base, res) {
-    var m = {s1: '_s1.jpg', full: '.png'};
-    return base + m[res];
-}
-
-function imgbasename(s, d) {
-    return 'images/' + (s.metaset ? d.set_uuid : s.uuid) + '/' + d.uuid;
-}
+module.exports = App;
