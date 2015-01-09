@@ -22,7 +22,11 @@ gulp.task('default', function () {
     return gulp.src('src/*.jsx')
         .pipe(react({harmony:true}))
         .pipe(uglify('combined.min.js', {outSourceMap: true}))
-        .pipe(gulp.dest('js'));
+        .pipe(gulp.dest('js'))
+        .on('error',function(err){
+            console.log(err.toString());
+            this.emit('end');
+        });
 });
 
 gulp.task('watch', function() {

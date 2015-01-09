@@ -86,6 +86,11 @@ var ImgPanel = React.createClass({
             .scaleExtent([0.02, 10])
             .on("zoom", this.zoomed);
 
+        drag = d3.behavior.drag()
+            .on("dragstart",this.dragstart)
+            .on("drag",this.dragging)
+            .on("dragend",this.dragend);
+
         $("#map").html("");
 
         //FIXME: This is VERY adhoc.
@@ -98,7 +103,10 @@ var ImgPanel = React.createClass({
             .style("width", '' + (this.width + this.margin.left + this.margin.right) + 'px')
             .style("height", '' + (this.height + this.margin.top + this.margin.bottom) + 'px')
             .append("g")
-            .call(zoom);
+            .call(zoom)
+            .call(drag);
+
+
 
         var rect = svg.append("rect")
             .attr("width", this.width)
@@ -162,19 +170,53 @@ var ImgPanel = React.createClass({
             el.append(imel);
         });
     },
+    dragOrigin: null,
+    dragDelta: null,
+    selectRect: null,
+    dragstart() {
+        if(d3.event.sourceEvent ? d3.event.sourceEvent.altKey : false) {
+            this.dragDelta = [0,0];
+            var se = d3.event.sourceEvent;
+            var c = $('#map')[0].getBoundingClientRect();
+            this.dragOrigin = [se.x-c.left,se.y-c.top];
+            console.log('dragstart',this.dragOrigin,d3.event );
+            this.selectRect ? this.selectRect.remove() : null;
+            this.selectRect = svg.append('g').attr('transform','translate ('+this.dragOrigin[0]+','+this.dragOrigin[1]+')');
+            this.selectRect.append('rect').attr({'width': 0,'height':0});
+        }
+    },
+    dragend() {
+        if(d3.event.sourceEvent ? d3.event.sourceEvent.altKey : false) {
+            this.dragDelta = null;
+            this.dragOrigin = null;
+        }
+    },
+    dragging() {
+        if(d3.event.sourceEvent ? d3.event.sourceEvent.altKey : false) {
+            this.dragDelta[0] += d3.event.dx;
+            this.dragDelta[1] += d3.event.dy;
+            var w = d3.event.sourceEvent.shiftKey ? Math.min(this.dragDelta[0],this.dragDelta[1]) : this.dragDelta[0];
+            var h = d3.event.sourceEvent.shiftKey ? Math.min(this.dragDelta[0],this.dragDelta[1]) : this.dragDelta[1];
+//            console.log(this.dragDelta);
+            this.selectRect.select('rect').attr({'width': w,'height':h, 'stroke': 'red', fill: 'none','stroke-width': 1,'stroke-dasharray': "5,5"});
+        }
+    },
     scale: 1,
+    tr: [0,0],
     zoomed() {
         var tr = d3.event.translate;
         var scale = d3.event.scale;
 
-        //if(isNaN(tr[0])){
-        //    zoom.translate([0, 0]);
-        //    zoom.scale(1);
-        //    zoom.event(svg.transition().duration(500));
-        //}else{
-//        console.log(d3.event.translate,d3.event.scale);
+        if(d3.event.sourceEvent ? d3.event.sourceEvent.altKey : false){
+            zoom.translate(this.tr);
+            zoom.scale(this.scale);
+            return;
+        }
+
         container.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
-        this.scale = d3.event.scale;
+
+        this.scale = scale;
+        this.tr = tr;
         updateImageResolution(d3.event.scale);
 
         var map_x = this.props.showOpt.tile ? 'x' : this.props.showOpt.mapX;
