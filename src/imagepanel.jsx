@@ -128,15 +128,18 @@ var ImgPanel = React.createClass({
         updateImageResolution(this.scale);
     },
     clickBackground(){
-        this.props.onChangeSelected('removeAll');
+        if(!this.addKey()){
+            this.props.onChangeSelected('removeAll');
+        }
+    },
+    addKey() {
+        var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+        return (isMac && d3.event.metaKey) || (!isMac && d3.event.shiftKey);
     },
     clickImg(d){
-        function addKey() {
-            var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-            return (isMac && d3.event.metaKey) || (!isMac && d3.event.shiftKey);
-        }
 
-        if (!addKey()) {
+
+        if (!this.addKey()) {
             this.props.onChangeSelected('removeAll');
         }
         if (this.props.selected[d.uuid]) {
