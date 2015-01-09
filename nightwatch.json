@@ -8,7 +8,7 @@
   "selenium" : {
     "start_process" : true,
     "server_path" : "node_modules/selenium-server-standalone-jar/jar/selenium-server-standalone-2.44.0.jar",
-    "log_path" : "", 
+    "log_path" : "",
     "cli_args" : {
       "webdriver.chrome.driver" : "node_modules/chromedriver/bin/chromedriver",
       "webdriver.ie.driver" : ""
