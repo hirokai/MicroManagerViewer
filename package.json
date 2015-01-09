@@ -6,20 +6,30 @@
   "dependencies": {},
   "devDependencies": {
     "browserify": "^8.0.3",
+    "chromedriver": "^2.12.0",
+    "d3": "^3.5.3",
     "grunt-jsx": "^0.1.8",
     "gulp": "^3.8.10",
     "gulp-react": "^2.0.0",
     "gulp-uglifyjs": "^0.5.0",
+    "jasmine-node": "^1.14.5",
     "jest-cli": "^0.2.1",
+    "jquery": "^2.1.3",
+    "moment": "^2.9.0",
+    "nightwatch": "^0.5.36",
+    "numeral": "^1.5.3",
     "react": "^0.12.2",
     "react-addons": "^0.9.0",
     "react-tools": "",
     "reactify": "^0.17.1",
+    "selenium-server-standalone-jar": "^2.44.0",
+    "selenium-webdriver": "^2.44.0",
+    "underscore": "^1.7.0",
     "vinyl-buffer": "^1.0.0",
     "vinyl-source-stream": "^1.0.0"
   },
   "scripts": {
-    "test": "node node_modules/jest-cli/bin/jest.js"
+    "test": "./nightwatch --test test-nightwatch/test.js --env chrome"
   },
   "jest": {
     "scriptPreprocessor": "<rootDir>/jest-preprocessor.js",

@@ -1,5 +1,5 @@
 var gulp = require('gulp');
-var react = require('gulp-react');
+//var react = require('gulp-react');
 var reactify = require('reactify');  // Transforms React JSX to JS.
 var uglify = require('gulp-uglifyjs');
 var browserify = require('browserify');

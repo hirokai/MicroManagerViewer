@@ -9,17 +9,24 @@ var App = React.createClass({
         return {datasets: {}, currentDataset: null, dims: {}};
     },
     render(){
+        var self = this;
         return <div>
             <div className="col-md-3">
                 <p>Choose dataset</p>
                 <ul id='data-menu' className="nav nav-pills nav-stacked">
                     {_.map(this.state.datasets,function(d,k){
-                        return <DataSetEntry key={k} data={d} data-uuid={k}/>;
+                        return <DataSetEntry key={k} data={d} uuid={k}
+                            active={d.uuid == (self.state.currentDataset ? self.state.currentDataset.uuid : null)}
+                            onClick={self.onClickDataSet}
+                        />;
                     })}
                 </ul>
                 </div>
                 <RightPane dataset={this.state.currentDataset}/>
             </div>;
+    },
+    onClickDataSet(uuid) {
+          this.setState({currentDataset: this.state.datasets[uuid]});
     },
     filterDimChanged: function(d){
         console.log(d);
@@ -48,15 +55,7 @@ var App = React.createClass({
             _.map(dat, function (d) {
                 ds[d.uuid] = d;
             });
-            self.setState({datasets: ds});
-            $('.dmenu').click(function (ev) {
-                var target = $(ev.target);
-                var el = target.tagName == 'li' ? target : target.parents('li');
-                el.parents('ul').children('li').removeClass('active');
-                el.addClass('active');
-                self.setState({currentDataset: self.state.datasets[el.attr('data-uuid')]});
-            });
-            $($('.dmenu > a')[0]).click();
+            self.setState({datasets: ds, currentDataset: ds[0]});
         });
     }
 
@@ -68,8 +67,11 @@ var DataSetEntry = React.createClass({
         var dims = ['positions','frames','channels','slices'];
         var m2 = {positions: 'P', frames: 'T', channels: 'C', slices: 'Z'};
         var s2 = _.compact(_.map(dims,function(a){return d[a] > 1 ? (m2[a] + d[a]) : null;})).join(' x ');
-        return <li role="presentation" data-uuid={d.uuid} className="dmenu">
+        return <li role="presentation" className={'dmenu' + (this.props.active ? ' active' : '')} onClick={this.onClick}>
             <a href="#">{d.name} <p>({d.images} images: {s2})</p></a></li>;
+    },
+    onClick (){
+        this.props.onClick(this.props.uuid);
     }
 });
 
@@ -662,4 +664,4 @@ $(function () {
 });
 
 
-module.exports = App;
+module.exports = {App: App, DataSetEntry: DataSetEntry};
