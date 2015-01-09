@@ -22,9 +22,9 @@ gulp.task('default', function () {
     return browserify(['./src/main.jsx'])
         .transform(reactify,{es6: true})
         .bundle()
-        .pipe(source('combined.js'))
-        .pipe(buffer())
-        .pipe(uglify('combined.min.js', {outSourceMap: true, compress: {drop_console: true}, warnings: false}))
+        .pipe(source('combined.js')).on('error',function(){this.emit('end');})
+//        .pipe(buffer())
+//        .pipe(uglify('combined.min.js', {outSourceMap: true, compress: {drop_console: false}, warnings: false}))
         .pipe(gulp.dest('./js'));
 });
 

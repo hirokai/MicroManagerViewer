@@ -70,15 +70,6 @@ var ImgPanel = React.createClass({
             this.preloadCache();
         }
     },
-    //shouldComponentUpdate(nextProps) {
-    //
-    //    return !(this.props.dataset.uuid == nextProps.dataset.uuid
-    //        && this.props.width == nextProps.width
-    //        && this.props.height == nextProps.height
-    //        && this.props.images == nextProps.images
-    //        && _.isEqual(this.props.showOpt, nextProps.images)
-    //    )
-    //},
     margin: {top: -5, right: -5, bottom: -5, left: -5},
     setupD3(firstTime) {
         this.width = (mobile ? w * 0.9 : this.props.width) - this.margin.left - this.margin.right;
@@ -110,6 +101,7 @@ var ImgPanel = React.createClass({
 
         var svg = this.svg;
 
+        svg.on('click',this.clickBackground);
 
         var rect = svg.append("rect")
             .attr("width", this.width)
@@ -131,11 +123,14 @@ var ImgPanel = React.createClass({
             .attr("class", "dot");
     },
     updateImages(imgs,opt,resetZoom) {
-        _updateImages(this.svg,this.zoom,this.props.dataset,imgs,opt,this.click,this.props.selected,resetZoom,this);
+        _updateImages(this.svg,this.zoom,this.props.dataset,imgs,opt,this.clickImg,this.props.selected,resetZoom,this);
         this.updateAxisLabels();
         updateImageResolution(this.scale);
     },
-    click(d){
+    clickBackground(){
+        this.props.onChangeSelected('removeAll');
+    },
+    clickImg(d){
         function addKey() {
             var isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
             return (isMac && d3.event.metaKey) || (!isMac && d3.event.shiftKey);
@@ -160,6 +155,7 @@ var ImgPanel = React.createClass({
                     return self.props.selected[d.uuid] ? 2 : 1;
                 }
             });
+        d3.event.stopPropagation();
     },
     preloadCache() {
         $('#imgcache').remove();

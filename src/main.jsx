@@ -80,7 +80,7 @@ var RightPane = React.createClass({
         dataset: React.PropTypes.object
     },
     getInitialState(){
-        return {images: []
+        return {images: {}
             , dims: {pos: null, frame: null, ch: null, slice: null}
             , coord: {pos: null, frame: null, ch: null, slice: null}
             , selectedImages: []  //Shown images.
@@ -121,6 +121,7 @@ var RightPane = React.createClass({
                     coord={this.state.coord}
                     filterDims={this.state.filterDims}
                 />
+                <ImgInfo selected={this.state.selected} startTime={this.state.startTime} dataset={this.props.dataset}/>
             </div>;
     },
     onMapXYChange(c){
@@ -168,11 +169,23 @@ var RightPane = React.createClass({
         console.log('filterDimChanged',filterDims,newCoord);
         this.setState({filterDims: filterDims, remainingDim: this.calcRemainingDim(), coord: newCoord, selectedImages: this.selectImages(this.state.images, filterDims, newCoord)});
     },
-    onChangeSelected(cmd,dat) {
-        console.log(cmd,dat);
+    onChangeSelected(cmd,uuid) {
+        console.log(cmd,uuid);
+        if(cmd == 'add'){
+            var st = _.extend({},this.state.selected);
+            console.log(st,this.state,this.state.images);
+            st[uuid] = this.state.images[uuid];
+            this.setState({selected: st});
+        }else if(cmd == 'remove'){
+            var st = _.extend({},this.state.selected);
+            delete st[uuid];
+            this.setState({selected: st});
+        }else if(cmd == 'removeAll'){
+            this.setState({selected: {}});
+        }
     },
     selectImages(images, f, coord) {
-        console.log(images.length,f,coord);
+//        console.log(Object.values(images).length,f,coord);
         var self = this;
         var res = _.filter(images, function (img) {
             return (!f.pos || coord.pos == null || img.pos == coord.pos)
@@ -257,11 +270,13 @@ var RightPane = React.createClass({
             filterDims.slice = false;
             filterDims[biggestDim] = true;
 
+            imgs = _.object(_.map(imgs,img => [img.uuid,img]));
+
             var selectedImgs = this.selectImages(imgs, filterDims, coord);
 
             // Note: It's important to setState everything needed for ImgPanel at one time.
             // Otherwise, ImgPanel's algorithm to see if redraw is needed will be incorrect (update will be missed).
-            self.setState({images: imgs, selectedImages: selectedImgs, dims: dims, coord: coord, filterDims: filterDims});
+            self.setState({images: imgs, selectedImages: selectedImgs, dims: dims, coord: coord, filterDims: filterDims, startTime: startTime});
         });
     }
 });
@@ -532,18 +547,21 @@ var MapTools = React.createClass({
 
 var ImgInfo = React.createClass({
     render: function(){
-        var rows = _.map(this.props.selectedImages,function(im){
-            var sec = (im.time-startTime)/1000;
+        var self = this;
+        var rows = _.compact(_.map(this.props.selected,function(im){
+            if(!im) return null;
+            var sec = (im.time-self.props.startTime)/1000;
             return <tr key={im.uuid}>
                 <td>{im.uuid}</td>
-                <td>{this.path(currentDataset, im)}</td>
+                <td>{self.path(im)}</td>
                 <td>{''+Math.floor(sec)+'.'+(Math.floor(sec*10)%10)}</td>
                 <td>{im.pos}</td>
                 <td>{im.frame}</td>
                 <td>{im.ch}</td>
                 <td>{im.slice}</td>
             </tr>;
-        });
+        }));
+        console.log(rows);
         return <div className="col-md-12" id="info">
             <table id="info" className="table">
                 <thead>
@@ -561,13 +579,13 @@ var ImgInfo = React.createClass({
             </table>
         </div>;
     },
-    path(dn, d) {
+    path(d) {
         function pad(num, size) {
             var s = "000000000" + num;
             return s.substr(s.length - size);
         }
 
-        var s = dataset[dn];
+        var s = this.props.dataset;
         if (s.metaset) {
             return d.folder + '/' + 'Pos0' + '/img_' + pad(d.frame, 9) + '_' + d.chname + '_'+ pad(d.slice,3) + '.tif';
         } else {

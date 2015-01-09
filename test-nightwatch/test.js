@@ -34,7 +34,7 @@ module.exports = {
                         });
                     });
                     browser.pause(10000);
-                    //els.click()
+                    //els.clickImg()
                     //    .pause(1000)
                     //    .assert.containsText('#tools', 'Position')
                     //    .assert.containsText('#tools', 'Frame')
