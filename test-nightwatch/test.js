@@ -1,13 +1,12 @@
 module.exports = {
-  "Demo test Google" : function (browser) {
+  "Demo test" : function (browser) {
     browser
-      .url("http://www.google.com")
+      .url("http://localhost:63343/MicroManager/")
       .waitForElementVisible('body', 1000)
-      .setValue('input[type=text]', 'nightwatch')
-      .waitForElementVisible('button[name=btnG]', 1000)
-      .click('button[name=btnG]')
+      .waitForElementVisible('ul.nav-pills > li', 1000)
+      .click('li')
       .pause(1000)
-      .assert.containsText('#main', 'The Night Watch')
+      .assert.containsText('body', 'Position')
       .end();
   }
 };
