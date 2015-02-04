@@ -22,14 +22,18 @@ def is_number(s):
 
 def read_json(path):
 	import json
+	import os
 	ds = []
 	with open(path) as f:
 		obj = json.load(f)
 		root = obj['rootfolder']
 		for d in obj['datasets']:
-			if not 'folders' in d:
-				d['folders'] = map(lambda p: root + p, d['subfolders'])
-			ds.append(d)
+			if isinstance(d, basestring):
+				ds.append(d)
+			else:
+				if not 'folders' in d:
+					d['folders'] = map(lambda p: os.path.join(root, p), d['subfolders'])
+				ds.append(d)
 		return ds
 
 def my_parsetime(str):
@@ -61,7 +65,16 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,me
 	# Read coord from metadata.txt
 	res = []
 	with open(path) as f:
-		obj = json.load(f)
+		try:
+			# print path
+			obj = json.load(f)
+		except Exception as e:
+			print "Micromanager metadata bug? (%s)" % path
+			try:
+				obj = json.loads(f.read()+'}')  # adhoc fix
+			except Exception as e:
+				print "Still error at %s" % path
+				raise e
 		fr_keys = obj.keys()
 		set_uuid = obj['Summary']['UUID']
 		outfolder = os.path.join('..', 'images', set_uuid)
@@ -127,19 +140,20 @@ def updateDatasets():
 	with open(csvpath, 'wb') as f:
 		writer = csv.writer(f)
 		writer.writerow(['uuid', 'name', 'folder', 'metaset', 'images', 'positions','frames','channels','slices', 'metasetdim'])
-		for d in sorted(datasets_processed,key=lambda a: a[1]):     # Sorted by name
+		for d in sorted(datasets_processed, key=lambda a: a[1]):     # Sorted by name
 			writer.writerow(d)
 
 
 datasets_processed = []
 
 
-def process_set(dataset):
+def process_set(dataset, depth=0):
 	print('Processing: ' + dataset)
 	num_cores = multiprocessing.cpu_count()
 	poss = Parallel(n_jobs=num_cores)(delayed(readMetadataFolder)(dataset, subfolder) for subfolder
 	                                  in os.listdir(dataset) if os.path.isdir(os.path.join(dataset, subfolder)))
 	poss = [x for x in poss if x is not None]
+	print(len(poss))
 	set_uuid = poss[0][1]
 
 	global imgcount
@@ -162,12 +176,12 @@ def process_set(dataset):
 
 	m = re.search('/(\d{6,8}.+?/.+?)/', dataset)
 	name = m.group(1)
-	datasets_processed.append((set_uuid, name, dataset, 0, len(pos_flatten), num_pos, num_fr, num_ch, num_sl))
+	datasets_processed.append((set_uuid, name, dataset, 0, len(pos_flatten), num_pos, num_fr, num_ch, num_sl, depth))
 
 	print('\nProcessed: ' + set_uuid)
 
 
-def process_metaset(ds):
+def process_metaset(ds, depth=0):
 	print('Processing: ' + ds['name'])
 	num_cores = multiprocessing.cpu_count()
 
@@ -218,20 +232,30 @@ def process_metaset(ds):
 	id = hashlib.sha256(','.join(sorted(set_uuid))).hexdigest()
 	write_to_csv(pos_flatten, 'metaset_%s' % (id), metaset=True)
 
-	datasets_processed.append(('metaset_' + id, ds['name'], id,1,len(pos_flatten), num_pos, num_fr, num_ch, num_sl, ds.get('dimension')))
+	datasets_processed.append(('metaset_' + id, ds['name'], id,1,len(pos_flatten), num_pos, num_fr, num_ch, num_sl, ds.get('dimension'), depth))
 
 	print('\nProcessed: ' + id)
 
 
+def search_datasets(datasets, depth=0):
+	for d in datasets:
+		if isinstance(d, dict):
+			try:
+				process_metaset(d,depth)
+			except:
+				pass
+		# elif isinstance(d, list):
+		# 	search_datasets(d, depth+1)
+		else:
+			try:
+				process_set(d,depth)
+			except:
+				pass
 def main():
 	import time
 	initial = time.time()
-	datasets = read_json("datasets.json")
-	for d in datasets:
-		if isinstance(d, dict):
-			process_metaset(d)
-		else:
-			process_set(d)
+	datasets = read_json("datasets20150203.json")
+	search_datasets(datasets)
 	updateDatasets()
 	final = time.time()
 	print('Done. %d images processed (%d images converted). %.1f sec total.' % (sum([d[4] for d in datasets_processed]),imgcount,final-initial))
