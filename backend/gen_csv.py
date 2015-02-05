@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.WARNING)
 force_imgout = False
 img_quality = ['half','s1'] # options: 'half', 's1'
 imgcount = 0
-
+root = ""
 
 def is_number(s):
 	try:
@@ -26,6 +26,7 @@ def read_json(path):
 	ds = []
 	with open(path) as f:
 		obj = json.load(f)
+		global root
 		root = obj['rootfolder']
 		for d in obj['datasets']:
 			if isinstance(d, basestring):
@@ -148,12 +149,13 @@ datasets_processed = []
 
 
 def process_set(dataset, depth=0):
-	print('Processing: ' + dataset)
+	folder = os.path.join(root, dataset)
+	print('Processing set: ' + folder)
 	num_cores = multiprocessing.cpu_count()
-	poss = Parallel(n_jobs=num_cores)(delayed(readMetadataFolder)(dataset, subfolder) for subfolder
-	                                  in os.listdir(dataset) if os.path.isdir(os.path.join(dataset, subfolder)))
+	poss = Parallel(n_jobs=num_cores)(delayed(readMetadataFolder)(folder, subfolder) for subfolder
+	                                  in os.listdir(folder) if os.path.isdir(os.path.join(folder, subfolder)))
 	poss = [x for x in poss if x is not None]
-	print(len(poss))
+	print('\n%d metadata.txt files' % len(poss))
 	set_uuid = poss[0][1]
 
 	global imgcount
@@ -175,14 +177,14 @@ def process_set(dataset, depth=0):
 	import re
 
 	m = re.search('/(\d{6,8}.+?/.+?)/', dataset)
-	name = m.group(1)
+	name = m.group(1) if m else dataset
 	datasets_processed.append((set_uuid, name, dataset, 0, len(pos_flatten), num_pos, num_fr, num_ch, num_sl, depth))
 
 	print('\nProcessed: ' + set_uuid)
 
 
 def process_metaset(ds, depth=0):
-	print('Processing: ' + ds['name'])
+	print('Processing metaset: ' + ds['name'])
 	num_cores = multiprocessing.cpu_count()
 
 	pos_all = []
@@ -249,7 +251,8 @@ def search_datasets(datasets, depth=0):
 		else:
 			try:
 				process_set(d,depth)
-			except:
+			except Exception as e:
+				print e
 				pass
 def main():
 	import time

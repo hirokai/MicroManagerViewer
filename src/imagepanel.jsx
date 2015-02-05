@@ -435,7 +435,7 @@ function _updateImages(svg,zoom,currentDataset,imgs, opt,click,selected,resetZoo
         var xi = i % col;
         var r = opt.tile ? (size * opt.marginRatio * xi) :
             (opt.mapX == 'x' ? (-d.x) :
-                (opt.mapX == 'y' ? (-d.y) :
+                (opt.mapX == 'y' ? (d.y) :
                     (opt.mapX == 'pos' ? d.pos * interval:
                         (opt.mapX == 'time' ? scaleTime(imgs,d.time) :
                             (opt.mapX == 'frame' ? (d.frame * interval) :
@@ -448,7 +448,7 @@ function _updateImages(svg,zoom,currentDataset,imgs, opt,click,selected,resetZoo
         var yi = Math.floor(i / col);
         var r = opt.tile ? (size * opt.marginRatio * yi) :
             (opt.mapY == 'x' ? (-d.x) :
-                (opt.mapY == 'y' ? (-d.y) :
+                (opt.mapY == 'y' ? (d.y) :
                     (opt.mapY == 'pos' ? d.pos * interval:
                         (opt.mapY == 'time' ? scaleTime(imgs,d.time) :
                             (opt.mapY == 'frame' ? (d.frame * interval) :
