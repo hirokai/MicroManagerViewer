@@ -454,7 +454,7 @@ var Slider = React.createClass({
         return nextProps.max != this.props.max;
     },
     changed: function (ev) {
-       // console.log(ev.value, "hey", this.props.value);
+        // console.log(ev.value, "hey", this.props.value);
         if (ev.value != this.props.value)
             this.props.onChange({key: this.props.dim, value: this.slider.getValue()});
     },
@@ -591,7 +591,7 @@ var MapTools = React.createClass({
     },
     sortOptions() {
         var options = [];
-       // console.log(this.props.remainingDim);
+        // console.log(this.props.remainingDim);
         if (_.contains(this.props.remainingDim, 'pos') && this.props.dims.pos > 1)
             options.push(<option value="pos" key='0'>Position index</option>);
         if (_.contains(this.props.remainingDim, 'frame') && this.props.dims.frame > 1)
