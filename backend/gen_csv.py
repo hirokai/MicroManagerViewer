@@ -124,7 +124,10 @@ def readMetadataFolder(folder, pos_subfolder, metaset=False, metaset_idx=None,me
 def write_to_csv(poss, set_uuid, metaset=False):
 	import csv
 
-	csvpath = os.path.join('..', 'metadata', set_uuid + '.csv')
+	metadatadir = os.path.join('..', 'metadata')
+	if not os.path.exists(metadatadir):
+		os.mkdir(metadatadir)
+	csvpath = os.path.join(metadatadir, set_uuid + '.csv')
 	header = ['folder','set_uuid', 'uuid', 'stime', 'pos', 'frame', 'ch', 'slice', 'time', 'posname', 'x', 'y', 'z', 'framename', 'chname', 'slicename'] +\
 	         (['meta_pos','meta_frame','meta_ch','meta_slice'] if metaset else [])
 	with open(csvpath, 'wb') as f:
@@ -257,7 +260,7 @@ def search_datasets(datasets, depth=0):
 def main():
 	import time
 	initial = time.time()
-	datasets = read_json("datasets20150203.json")
+	datasets = read_json("data.json")
 	search_datasets(datasets)
 	updateDatasets()
 	final = time.time()

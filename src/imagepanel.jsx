@@ -49,7 +49,7 @@ var ImgPanel = React.createClass({
     },
     componentDidMount() {
         this.setupD3(true);
-        console.log('componentDidMount!',this.props);
+//        console.log('componentDidMount!',this.props);
         this.updateImages(this.props.images,this.props.showOpt,true);
     },
     isImageMappingChanged(prevProps){
@@ -60,7 +60,7 @@ var ImgPanel = React.createClass({
     },
     componentDidUpdate(prevProps) {
         var resetZoom = this.isImageMappingChanged(prevProps);
-        console.log('componentDidUpdate',this.props,prevProps,resetZoom);
+//        console.log('componentDidUpdate',this.props,prevProps,resetZoom);
         this.updateImages(this.props.images, this.props.showOpt, resetZoom);
         if(this.props.dataset.uuid != prevProps.dataset.uuid){
             this.setupD3(false);
@@ -181,7 +181,7 @@ var ImgPanel = React.createClass({
             var se = d3.event.sourceEvent;
             var c = $('#map')[0].getBoundingClientRect();
             this.dragOrigin = [se.x-c.left,se.y-c.top];
-            console.log('dragstart',this.dragOrigin,d3.event );
+     //       console.log('dragstart',this.dragOrigin,d3.event );
             this.selectRect ? this.selectRect.remove() : null;
             this.selectRect = this.svg.append('g').attr('transform','translate ('+this.dragOrigin[0]+','+this.dragOrigin[1]+')');
             this.selectRect.append('rect').attr({'width': 0,'height':0});
@@ -391,7 +391,7 @@ function scaleTime(imgs,t){
 
 // Update images in svg panel and info.
 function _updateImages(svg,zoom,currentDataset,imgs, opt,click,selected,resetZoom, self) {
-    console.log(resetZoom);
+ //   console.log(resetZoom);
     //console.log('updateImages()',imgs,opt);
 
     dot = d3.select('g.dot');
@@ -520,7 +520,7 @@ function _updateImages(svg,zoom,currentDataset,imgs, opt,click,selected,resetZoo
                 var targetscale = Math.min((axisPos.right-axisPos.left) / (_.max(xs) - _.min(xs) + size * opt.marginRatio), (axisPos.bottom-axisPos.top) / (_.max(ys) - _.min(ys) + size * opt.marginRatio)) * 0.9;
                 var tr_x = axisPos.left + 10 - targetscale * _.min(xs);
                 var tr_y = axisPos.top + 10 - targetscale * _.min(ys);
-                console.log(tr_x, tr_y,targetscale);
+                // console.log(tr_x, tr_y,targetscale);
 
                 zoom.translate([tr_x, tr_y]);
                 zoom.scale(targetscale);
